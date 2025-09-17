@@ -236,22 +236,22 @@ def display_results(results, company_name):
             with col2:
                 search_term = st.text_input("Search in queries:", placeholder="Enter search term...")
             
-            # Prepare data for display
-            df = pd.DataFrame(results['query_results'])
+            # Display results
+            query_results = results['query_results']
             
-            # Apply filters
+            # Apply filters to raw data
+            filtered_results = query_results
+            
             if show_cited_only:
-                df = df[df['cited'] == True]
+                filtered_results = [r for r in filtered_results if r.get('cited', False)]
             
             if search_term:
-                mask = df['query'].astype(str).str.contains(search_term, case=False, na=False)
-                df = df[mask]
+                filtered_results = [r for r in filtered_results if search_term.lower() in str(r.get('query', '')).lower()]
             
-            # Display results
-            for idx, row in df.iterrows():
-                cited = bool(row['cited']) if 'cited' in row and pd.notna(row['cited']) else False
-                query_text = str(row['query']) if 'query' in row else "Unknown query"
-                response_text = str(row['response']) if 'response' in row else "No response"
+            for result in filtered_results:
+                cited = bool(result.get('cited', False))
+                query_text = str(result.get('query', 'Unknown query'))
+                response_text = str(result.get('response', 'No response'))
                 
                 with st.expander(f"{'✅' if cited else '❌'} {query_text[:80]}..."):
                     col1, col2 = st.columns([3, 1])
@@ -260,19 +260,19 @@ def display_results(results, company_name):
                         st.write("**Response:**")
                         st.write(response_text[:500] + "..." if len(response_text) > 500 else response_text)
                         
-                        context = row.get('context') if hasattr(row, 'get') else None
-                        if cited and context and pd.notna(context):
+                        context = result.get('context')
+                        if cited and context:
                             st.write("**Citation Context:**")
                             st.info(str(context))
                     
                     with col2:
                         st.write("**Details:**")
                         st.write(f"Cited: {'Yes' if cited else 'No'}")
-                        position = row.get('position') if hasattr(row, 'get') else None
-                        if position and pd.notna(position):
+                        position = result.get('position')
+                        if position:
                             st.write(f"Position: {position}")
-                        exec_time = row.get('execution_time') if hasattr(row, 'get') else None
-                        if exec_time and pd.notna(exec_time):
+                        exec_time = result.get('execution_time')
+                        if exec_time:
                             st.write(f"Time: {exec_time:.2f}s")
     
     with tab3:
