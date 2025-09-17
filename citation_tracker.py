@@ -1,11 +1,16 @@
 import re
+import asyncio
+import os
 from typing import Dict, List, Any, Optional
+from simple_entity_discovery import SimpleEntityDiscovery
 
 class CitationTracker:
     """Tracks and analyzes company citations in AI responses"""
     
     def __init__(self):
         self.company_patterns = {}
+        # Initialize simplified entity discovery (no external dependencies)
+        self.entity_discovery = SimpleEntityDiscovery()
     
     def analyze_citation(self, response: str, company_name: str) -> Dict[str, Any]:
         """
@@ -34,8 +39,8 @@ class CitationTracker:
         # Check for direct citations
         citation_info = self._find_company_mentions(normalized_response, normalized_company, response)
         
-        # Find competitors mentioned
-        competitors = self._extract_competitors(response, company_name)
+        # Find competitors using enhanced entity discovery
+        competitors = self._extract_competitors_enhanced(response, company_name)
         
         # Determine ranking position if in a list
         position = self._find_ranking_position(response, company_name) if citation_info['cited'] else None
@@ -244,3 +249,19 @@ class CitationTracker:
                         return int(match.group(1))
         
         return None
+    
+    def _extract_competitors_enhanced(self, response: str, company_name: str) -> List[str]:
+        """Extract competitors using simplified entity discovery with advanced pattern matching"""
+        
+        try:
+            # Use simplified entity discovery (no async required)
+            competitors_data = self.entity_discovery.discover_competitors(response, company_name)
+            
+            # Extract just the company names for backward compatibility
+            # Use slightly lower threshold to include more single-word brands
+            return [comp['name'] for comp in competitors_data if comp.get('confidence', 0) >= 0.65]
+            
+        except Exception as e:
+            print(f"Enhanced competitor extraction failed: {e}")
+            # Fall back to original method
+            return self._extract_competitors(response, company_name)
