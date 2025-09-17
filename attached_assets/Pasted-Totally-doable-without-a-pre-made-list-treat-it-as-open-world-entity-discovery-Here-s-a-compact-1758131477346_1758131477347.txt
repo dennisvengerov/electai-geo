@@ -1,0 +1,205 @@
+Totally doable without a pre-made list—treat it as **open-world entity discovery**. Here’s a compact, production-oriented recipe you can drop in now and harden over time.
+
+# High-level pipeline (open-world)
+
+1. **Collect evidence per answer**
+
+   * **Citations** → extract eTLD+1 (e.g., `sub.docs.acme.ai` → `acme.ai`).
+   * **Inline URLs** in the text (same treatment).
+   * **Organization NER** on the answer text (company names).
+   * **Title-case noun phrases** + **company suffix cues** (Inc, LLC, Ltd, GmbH, Oy, SA/SAS, AB, BV, NV, PLC, Pty, KK, Co., Labs, AI, Systems, Holdings, Group, Technologies).
+
+2. **Canonicalize & cluster**
+
+   * Key by **primary\_domain** when you have it; otherwise form **alias clusters** (Levenshtein / embeddings) and **promote to an entity** once observed ≥ N times or co-occurs with a domain.
+   * Merge aliases that repeatedly appear near the same domain or that fuzzy-match site/brand strings you scrape from the homepage (if you choose to enrich—respect robots/TOS).
+
+3. **Score & disambiguate (no prior list)**
+
+   * Features:
+
+     * `url_present` (+0.50)
+     * `cited_source_slot_weight` (e.g., top card +0.30, footnote #1 +0.25, then decay)
+     * `org_ner_flag` (+0.20)
+     * `company_suffix_flag` (+0.10)
+     * `alias_near_domain` within ±80 chars (+0.20)
+     * `dictionary_word_penalty` for common words (−0.25 unless domain evidence exists)
+     * `frequency_bonus` across runs (+0.05 \* log(occurrences))
+   * Promote to **entity** if score ≥ 0.60 (tunable) or if **domain evidence** exists at least once.
+
+4. **Store first, decide later**
+
+   * `entity_candidates` (open-world): everything you saw with scores + evidence pointers.
+   * Nightly: auto-merge obvious duplicates; surface **low-confidence** (0.45–0.60) to a 5-minute review queue. Reviewer action (merge/confirm/ignore) updates the resolver.
+
+5. **Report without a list**
+
+   * **Share of voice (text)**: fraction of answers mentioning each discovered entity.
+   * **Share of voice (citations)**: fraction of citations per entity domain.
+   * **Co-mention graph**: who appears together (useful to infer category competitors).
+   * **Topic/intent slices**: presence by prompt clusters, engine, locale.
+
+# Minimal schemas
+
+* **entities**(entity\_id, canonical\_name, primary\_domain, status, created\_at)
+* **entity\_aliases**(entity\_id, alias\_text, source\_type {ner, regex, titlecase, url}, confidence\_score)
+* **entity\_evidence**(evidence\_id, run\_id, prompt\_id, engine, alias\_text, primary\_domain, char\_start, char\_end, slot\_index, feature\_vector\_json, confidence\_score)
+* **entity\_merges**(from\_entity\_id, to\_entity\_id, reason)
+
+# Practical heuristics that matter
+
+* **Domain beats text.** If any URL resolves to `acme.ai`, create entity **Acme** anchored on `acme.ai` and link text aliases to it.
+* **Short/common words are traps.** Require domain or suffix/context to accept (“Arc”, “Solo”, “Bolt”, “Notion”).
+* **Confidence bands.** Only chart ≥0.60; keep 0.45–0.60 in review; drop <0.45 unless it reappears.
+* **Language aware.** Load suffix/ORG cues per locale; run NER models for major languages you track.
+* **Active learning.** Every reviewer action adds an alias or a blocklist token; precision quickly climbs >0.9 with tiny human time.
+
+# Drop-in extractor (no pre-made list)
+
+Illustrative Python you can wire into your collector. It builds **entity candidates** from citations, inline URLs, NER, and company-suffix patterns, then scores and dedupes on the fly. (Variable names use your underscore style.)
+
+```python
+import re
+from dataclasses import dataclass
+from typing import List, Dict, Optional, Tuple
+from collections import defaultdict
+from urllib.parse import urlparse
+
+# Optional: swap with spaCy or a lightweight NER; here we stub ORG detection.
+def naive_org_ner(text: str) -> List[Tuple[str, int, int]]:
+    # Very rough: sequences of Title-Case words, optionally ending with a company suffix.
+    company_suffixes = r"(Inc\.?|LLC|Ltd\.?|GmbH|SAS|SA|AB|BV|NV|PLC|Pty|KK|Co\.|Labs|AI|Group|Holdings|Technologies)"
+    pattern = rf"\b([A-Z][a-zA-Z0-9&\-]+(?:\s+[A-Z][a-zA-Z0-9&\-]+){{0,3}}(?:\s+{company_suffixes})?)\b"
+    return [(m.group(1), m.start(1), m.end(1)) for m in re.finditer(pattern, text)]
+
+def extract_domains_from_text(text: str) -> List[Tuple[str, int, int]]:
+    url_pattern = r"https?://[^\s)>\]]+"
+    hits = []
+    for m in re.finditer(url_pattern, text):
+        url = m.group(0).rstrip(".,);]")
+        try:
+            netloc = urlparse(url).netloc.lower()
+            # eTLD+1 approximation without external lib:
+            parts = netloc.split(".")
+            if len(parts) >= 2:
+                primary_domain = ".".join(parts[-2:])
+            else:
+                primary_domain = netloc
+            hits.append((primary_domain, m.start(), m.end()))
+        except Exception:
+            continue
+    return hits
+
+COMMON_DICTIONARY_WORDS = set("""
+bolt solo arc notion core vision future data cloud systems solution prime peak base point alpha beta gamma
+""".split())
+
+@dataclass
+class EntityCandidate:
+    canonical_name: Optional[str]
+    primary_domain: Optional[str]
+    alias_text: str
+    source_type: str  # 'citation','inline_url','ner','titlecase'
+    char_start: int
+    char_end: int
+    slot_index: Optional[int]
+    confidence_score: float
+    feature_notes: List[str]
+
+def score_candidate(alias_text: str,
+                    has_domain: bool,
+                    slot_index: Optional[int],
+                    is_org_ner: bool,
+                    is_company_suffix: bool,
+                    is_common_word: bool,
+                    alias_near_domain: bool) -> Tuple[float, List[str]]:
+    score = 0.0
+    notes = []
+    if has_domain:
+        score += 0.50; notes.append("url_present")
+    if slot_index is not None:
+        weight = max(0.10, 0.35 - 0.05 * (slot_index - 1))  # slot 1 ~= 0.35, decays
+        score += weight; notes.append(f"slot_weight_{slot_index}")
+    if is_org_ner:
+        score += 0.20; notes.append("org_ner")
+    if is_company_suffix:
+        score += 0.10; notes.append("company_suffix")
+    if alias_near_domain:
+        score += 0.20; notes.append("alias_near_domain")
+    if is_common_word and not has_domain:
+        score -= 0.25; notes.append("dictionary_word_penalty")
+    return round(score, 3), notes
+
+def discover_entities(answer_text: str,
+                      cited_domains_in_order: List[str]) -> List[EntityCandidate]:
+    # 1) Citations/domains (provided by your engine parser)
+    candidates: List[EntityCandidate] = []
+    for idx, dom in enumerate(cited_domains_in_order, start=1):
+        candidates.append(EntityCandidate(
+            canonical_name=None,
+            primary_domain=dom,
+            alias_text=dom,
+            source_type="citation",
+            char_start=-1, char_end=-1,
+            slot_index=idx,
+            confidence_score=0.50 + max(0.10, 0.35 - 0.05 * (idx - 1)),
+            feature_notes=["url_present", f"slot_weight_{idx}"]
+        ))
+
+    # 2) Inline URLs in answer text
+    inline_domains = extract_domains_from_text(answer_text)
+    for dom, s, e in inline_domains:
+        candidates.append(EntityCandidate(
+            canonical_name=None, primary_domain=dom, alias_text=dom,
+            source_type="inline_url", char_start=s, char_end=e,
+            slot_index=None, confidence_score=0.50, feature_notes=["url_present"]
+        ))
+
+    # 3) ORG NER / title-case phrases
+    for alias_text, s, e in naive_org_ner(answer_text):
+        is_company_suffix = bool(re.search(r"\b(Inc\.?|LLC|Ltd\.?|GmbH|SAS|SA|AB|BV|NV|PLC|Pty|KK|Co\.|Labs|AI|Group|Holdings|Technologies)\b", alias_text))
+        is_common_word = alias_text.lower() in COMMON_DICTIONARY_WORDS
+        # is the alias near any domain mention?
+        alias_near_domain = any(abs(s - d_s) < 80 for _, d_s, _ in inline_domains)
+        conf, notes = score_candidate(alias_text, has_domain=False, slot_index=None,
+                                      is_org_ner=True, is_company_suffix=is_company_suffix,
+                                      is_common_word=is_common_word, alias_near_domain=alias_near_domain)
+        candidates.append(EntityCandidate(
+            canonical_name=alias_text, primary_domain=None, alias_text=alias_text,
+            source_type="ner", char_start=s, char_end=e, slot_index=None,
+            confidence_score=conf, feature_notes=notes
+        ))
+
+    # 4) Simple domain↔alias co-attach: if alias is near a domain, attach it
+    for c in candidates:
+        if c.primary_domain is None:
+            nearest = sorted(inline_domains, key=lambda x: abs(c.char_start - x[1]))[:1]
+            if nearest:
+                c.primary_domain = nearest[0][0]
+                c.feature_notes.append("attached_to_nearest_domain")
+                c.confidence_score = min(1.0, round(c.confidence_score + 0.20, 3))
+
+    # 5) Deduplicate by (primary_domain or alias_text) keeping highest confidence
+    best_by_key: Dict[str, EntityCandidate] = {}
+    for c in candidates:
+        key = c.primary_domain or f"alias::{c.alias_text.lower()}"
+        if key not in best_by_key or c.confidence_score > best_by_key[key].confidence_score:
+            best_by_key[key] = c
+
+    return list(best_by_key.values())
+```
+
+**How to use it**
+
+* Feed it the **ordered list of cited domains** (from your engine parser) and the **answer text**.
+* It yields **entity candidates** with a confidence score and notes you can store.
+* Chart only those with `confidence_score ≥ 0.60`, queue 0.45–0.60 for review.
+
+# Optional “Level-up” enrichers (plug-and-play later)
+
+* **Homepage probe** (HEAD + lightweight GET) to read `<title>` / `og:site_name` / `schema.org Organization` → better canonical names.
+* **Wikidata/Wikipedia reconciliation**: disambiguate common names with open IDs.
+* **Industry classifier** (zero-shot or keywords) to bucket entities into niches; helpful for dashboards.
+* **Embedding linker**: embed alias spans and known brand names; cosine-match boosts recall for unusual spellings.
+
+This gives you a robust, **list-free** discovery loop: your system learns the competitor set **per niche** from the answers themselves, promotes reliable domains to entities, and steadily improves via tiny human reviews.

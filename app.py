@@ -49,8 +49,8 @@ def main():
         
         # Analysis parameters
         st.subheader("Analysis Parameters")
-        num_queries = st.slider("Number of queries", min_value=10, max_value=100, value=100, step=10)
-        max_concurrent = st.slider("Max concurrent requests", min_value=5, max_value=20, value=10)
+        num_queries = st.slider("Number of queries", min_value=2, max_value=20, value=5, step=1)
+        max_concurrent = st.slider("Max concurrent requests", min_value=1, max_value=10, value=5)
         
     # Main interface
     col1, col2 = st.columns([2, 1])

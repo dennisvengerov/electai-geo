@@ -1,6 +1,6 @@
 modules = ["python-3.11"]
 [agent]
-integrations = ["python_openai:1.0.0"]
+integrations = ["python_openai:1.0.0", "python_gemini:1.0.0"]
 
 [nix]
 channel = "stable-25_05"
@@ -37,10 +37,6 @@ outputType = "webview"
 [[ports]]
 localPort = 5000
 externalPort = 80
-
-[[ports]]
-localPort = 33027
-externalPort = 3000
 
 [[ports]]
 localPort = 38603
