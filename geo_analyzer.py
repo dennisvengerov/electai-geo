@@ -341,119 +341,98 @@ class GEOAnalyzer:
 
     async def _make_ranking_query(self, query: str) -> str:
         """
-        Make a ranking query using OpenAI's GPT-5 to generate actual ranked lists
+        Make a ranking query using OpenAI's GPT-5 via the Responses API.
+        Falls back to GPT-4o only if GPT-5 models are unavailable.
         """
-        print(f"🔍 Starting GPT-5 ranking query...")
+        print(f"🔍 Starting GPT-5 ranking query (Responses API)...")
         print(f"   API Key present: {bool(self.openai_api_key)}")
         print(f"   Query: {query}")
-        
+
         from openai import AsyncOpenAI
+
+        # Preferred model order: GPT-5 family → GPT-4o
+        model_candidates = [
+            "gpt-5-chat-latest",
+            "gpt-5",
+            "gpt-5-2025-08-07",
+            "gpt-4o",
+        ]
+
+        # Compose a single prompt for the Responses API
+        prompt = (
+            "You are an expert analyst creating comprehensive ranked lists and recommendations.\n"
+            "ALWAYS provide specific rankings with numbered lists when answering queries.\n"
+            "Include company names, exact positions, and clear explanations.\n"
+            "Format rankings as: 1., 2., 3., ...\n\n"
+            f"TASK: Provide a comprehensive ranked response to this query: {query}\n\n"
+            "Make sure to:\n"
+            "- Include numbered rankings (1., 2., 3., etc.) when listing companies/products\n"
+            "- Mention specific company names and their market positions\n"
+            "- Provide detailed explanations for each ranking\n"
+            "- Include competitive analysis and comparisons\n"
+            "- Be comprehensive and authoritative in your response"
+        )
 
         try:
             client = AsyncOpenAI(api_key=self.openai_api_key)
-            print(f"✅ OpenAI client initialized successfully")
+            print("✅ OpenAI client initialized successfully")
 
-            # Try GPT-5 first, fallback to GPT-4o if not available
-            model_to_use = "gpt-5"
-            print(f"📡 Sending request to {model_to_use}...")
-            
-            try:
-                response = await client.chat.completions.create(
-                    model=model_to_use,
-                    messages=[{
-                        "role": "system",
-                        "content": (
-                            "You are an expert analyst creating comprehensive ranked lists and recommendations. "
-                            "ALWAYS provide specific rankings with numbered lists when answering queries. "
-                            "Include company names, specific positions, and detailed explanations. "
-                            "Format your responses with clear numbered rankings (1., 2., 3., etc.) when relevant. "
-                            "Be specific about market positions, features, and competitive advantages. "
-                            "Provide comprehensive analysis that would help users make informed decisions."
-                        )
-                    }, {
-                        "role": "user",
-                        "content": (
-                            f"Provide a comprehensive ranked response to this query with specific numbered rankings where appropriate: {query}\n\n"
-                            "Make sure to:\n"
-                            "- Include numbered rankings (1., 2., 3., etc.) when listing companies/products\n"
-                            "- Mention specific company names and their market positions\n"
-                            "- Provide detailed explanations for each ranking\n"
-                            "- Include competitive analysis and comparisons\n"
-                            "- Be comprehensive and authoritative in your response"
-                        )
-                    }],
-                    temperature=0.7,
-                    max_tokens=1500
-                )
-
-                response_content = response.choices[0].message.content or ""
-                print(f"✅ {model_to_use} API call successful")
-                print(f"   Response length: {len(response_content)} characters")
-                print(f"   Usage: {response.usage}")
-                
-                return response_content
-                
-            except Exception as model_error:
-                if "model" in str(model_error).lower() or "404" in str(model_error):
-                    print(f"⚠️ {model_to_use} not available, trying GPT-4o...")
-                    model_to_use = "gpt-4o"
-                    
-                    response = await client.chat.completions.create(
+            last_error: Optional[Exception] = None
+            for model_to_use in model_candidates:
+                try:
+                    print(f"📡 Sending Responses API request to {model_to_use}...")
+                    resp = await client.responses.create(
                         model=model_to_use,
-                        messages=[{
-                            "role": "system",
-                            "content": (
-                                "You are an expert analyst creating comprehensive ranked lists and recommendations. "
-                                "ALWAYS provide specific rankings with numbered lists when answering queries. "
-                                "Include company names, specific positions, and detailed explanations. "
-                                "Format your responses with clear numbered rankings (1., 2., 3., etc.) when relevant. "
-                                "Be specific about market positions, features, and competitive advantages. "
-                                "Provide comprehensive analysis that would help users make informed decisions."
-                            )
-                        }, {
-                            "role": "user",
-                            "content": (
-                                f"Provide a comprehensive ranked response to this query with specific numbered rankings where appropriate: {query}\n\n"
-                                "Make sure to:\n"
-                                "- Include numbered rankings (1., 2., 3., etc.) when listing companies/products\n"
-                                "- Mention specific company names and their market positions\n"
-                                "- Provide detailed explanations for each ranking\n"
-                                "- Include competitive analysis and comparisons\n"
-                                "- Be comprehensive and authoritative in your response"
-                            )
-                        }],
+                        input=prompt,
                         temperature=0.7,
-                        max_tokens=1500
+                        max_output_tokens=1500,
                     )
 
-                    response_content = response.choices[0].message.content or ""
-                    print(f"✅ {model_to_use} API call successful (fallback)")
-                    print(f"   Response length: {len(response_content)} characters")
-                    print(f"   Usage: {response.usage}")
-                    
-                    return response_content
-                else:
-                    raise model_error
+                    content = getattr(resp, "output_text", None)
+                    if not content:
+                        # Fallback extraction for older SDK structures
+                        try:
+                            content = "".join(
+                                part.text for part in resp.output[0].content if getattr(part, "text", None)
+                            )
+                        except Exception:
+                            content = str(resp)
+
+                    print(f"✅ {model_to_use} Responses API call successful")
+                    print(f"   Response length: {len(content)} characters")
+                    return content
+
+                except Exception as model_error:
+                    last_error = model_error
+                    error_msg = str(model_error)
+                    print(f"⚠️ {model_to_use} failed: {error_msg[:200]}")
+                    # Continue to next candidate on model/endpoint errors
+                    continue
+
+            # If all candidates failed, raise the last error
+            if last_error is not None:
+                raise last_error
+
+            raise RuntimeError("No model candidates attempted")
 
         except Exception as e:
             error_msg = str(e)
-            print(f"❌ GPT-5 API call failed")
+            print("❌ OpenAI Responses API call failed")
             print(f"   Error type: {type(e).__name__}")
             print(f"   Error message: {error_msg}")
             print(f"   API key length: {len(self.openai_api_key) if self.openai_api_key else 0}")
-            
-            # Check for specific error types
+
             if "api_key" in error_msg.lower() or "401" in error_msg:
-                print(f"🔑 API Key issue detected")
+                print("🔑 API Key issue detected")
             elif "quota" in error_msg.lower() or "429" in error_msg:
-                print(f"💰 Quota/rate limit issue detected")
+                print("💰 Quota/rate limit issue detected")
             elif "model" in error_msg.lower() or "404" in error_msg:
-                print(f"🤖 Model issue detected - GPT-5 may not be available")
-            
+                print("🤖 Model issue detected - model may be unavailable on this endpoint")
+
             import traceback
-            print(f"   Full traceback:")
+            print("   Full traceback:")
             traceback.print_exc()
-            
+
             raise Exception(f"OpenAI API error: {str(e)}")
 
     def _analyze_results(self, query_results: List[QueryResult], company_name: str) -> Dict[str, Any]:

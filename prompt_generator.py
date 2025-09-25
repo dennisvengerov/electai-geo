@@ -84,21 +84,72 @@ class PromptGenerator:
             # Use Gemini 2.0 Flash for query generation
             print(f"📡 Sending request to Gemini 2.0 Flash...")
             
-            # Enable Google Search for current 2025 trends and data
-            tools = [genai.tools.GoogleSearchRetrieval()]
+            # Try to enable Google Search if available in the current SDK
+            tools = []
+            try:
+                # Method 1: Try GoogleSearchRetrieval if available
+                if hasattr(genai, 'tools') and hasattr(genai.tools, 'GoogleSearchRetrieval'):
+                    tools = [genai.tools.GoogleSearchRetrieval()]
+                    print(f"✅ Google Search tool enabled for current trends")
+                
+                # Method 2: Try function calling approach for search
+                elif hasattr(genai.types, 'FunctionDeclaration'):
+                    search_function = genai.types.FunctionDeclaration(
+                        name="search_current_trends",
+                        description=f"Search for current 2025 trends and popular queries in the {industry_context} industry",
+                        parameters={
+                            "type": "object",
+                            "properties": {
+                                "query": {
+                                    "type": "string",
+                                    "description": f"Search query about current {industry_context} trends in 2025"
+                                }
+                            },
+                            "required": ["query"]
+                        }
+                    )
+                    
+                    search_tool = genai.types.Tool(function_declarations=[search_function])
+                    tools = [search_tool]
+                    print(f"✅ Search function tool defined for trend research")
+                
+                else:
+                    print(f"⚠️ No search tools available, using enhanced 2025 context prompt")
+                    
+            except Exception as tool_error:
+                print(f"⚠️ Tool setup failed: {str(tool_error)}")
+                tools = []
             
-            response = await asyncio.to_thread(
-                self.model.generate_content,
-                prompt,
-                tools=tools,
-                generation_config=genai.types.GenerationConfig(
-                    temperature=0.8,
-                    top_p=0.9,
-                    top_k=40,
-                    max_output_tokens=2000,
-                    response_mime_type="application/json"
-                )
-            )
+            # Make the API call with or without tools
+            try:
+                if tools:
+                    response = await asyncio.to_thread(
+                        self.model.generate_content,
+                        prompt,
+                        tools=tools,
+                        generation_config=genai.types.GenerationConfig(
+                            temperature=0.8,
+                            top_p=0.9,
+                            top_k=40,
+                            max_output_tokens=2000,
+                            response_mime_type="application/json"
+                        )
+                    )
+                else:
+                    response = await asyncio.to_thread(
+                        self.model.generate_content,
+                        prompt,
+                        generation_config=genai.types.GenerationConfig(
+                            temperature=0.8,
+                            top_p=0.9,
+                            top_k=40,
+                            max_output_tokens=2000,
+                            response_mime_type="application/json"
+                        )
+                    )
+            except Exception as api_error:
+                print(f"❌ Gemini API call failed: {str(api_error)}")
+                raise api_error
             
             print(f"✅ Gemini 2.0 Flash response received")
             print(f"   Response text length: {len(response.text) if response.text else 0}")
@@ -179,9 +230,9 @@ class PromptGenerator:
         primary_type = query_types[batch_number % len(query_types)]
         
         return f"""
-You are a consumer research expert with access to current internet data and real-time search trends. Generate realistic search queries that people actually type when researching {industry_context} products in 2025.
+You are a consumer research expert generating realistic search queries that people actually type when researching {industry_context} products in 2025.
 
-CURRENT CONTEXT: It is 2025 and you have access to live Google Search data. Use this to understand what consumers are ACTUALLY searching for right now - current trends, popular products, seasonal factors, and emerging preferences in the {industry_context} space.
+CURRENT CONTEXT: It is September 2025. Consider current trends, seasonal factors (fall/winter approaching), and emerging consumer preferences in the {industry_context} space. Generate queries that reflect what consumers are ACTUALLY searching for right now based on 2025 market dynamics, technology advances, and consumer behavior patterns.
 
 Focus primarily on: {primary_type}
 
