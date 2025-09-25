@@ -1,14 +1,26 @@
 import json
 import asyncio
 from typing import List, Dict, Any
-from openai import AsyncOpenAI
+import google.generativeai as genai
+from google.generativeai.types import HarmCategory, HarmBlockThreshold
 
 class PromptGenerator:
-    """Generates semantically similar prompts for GEO analysis"""
+    """Generates semantically similar prompts for GEO analysis using Gemini 2.0 Flash"""
     
-    def __init__(self, api_key: str):
-        self.api_key = api_key
-        self.client = AsyncOpenAI(api_key=api_key)
+    def __init__(self, gemini_api_key: str):
+        self.gemini_api_key = gemini_api_key
+        genai.configure(api_key=gemini_api_key)
+        
+        # Configure Gemini 2.0 Flash for query generation
+        self.model = genai.GenerativeModel(
+            'gemini-2.0-flash-exp',
+            safety_settings={
+                HarmCategory.HARM_CATEGORY_HATE_SPEECH: HarmBlockThreshold.BLOCK_NONE,
+                HarmCategory.HARM_CATEGORY_HARASSMENT: HarmBlockThreshold.BLOCK_NONE,
+                HarmCategory.HARM_CATEGORY_SEXUALLY_EXPLICIT: HarmBlockThreshold.BLOCK_NONE,
+                HarmCategory.HARM_CATEGORY_DANGEROUS_CONTENT: HarmBlockThreshold.BLOCK_NONE,
+            }
+        )
     
     async def generate_semantic_queries(
         self,
@@ -63,32 +75,67 @@ class PromptGenerator:
         )
         
         try:
-            # the newest OpenAI model is "gpt-5" which was released August 7, 2025.
-            # do not change this unless explicitly requested by the user
-            response = await self.client.chat.completions.create(
-                model="gpt-5",
-                messages=[
-                    {
-                        "role": "system",
-                        "content": "You are an expert in search query generation and SEO. "
-                        "Generate diverse, realistic search queries that users might ask "
-                        "when looking for products or services in the given industry. "
-                        "Make queries natural and varied in style, length, and approach."
-                    },
-                    {
-                        "role": "user",
-                        "content": prompt
-                    }
-                ],
-                response_format={"type": "json_object"},
-                temperature=0.8,
-                max_tokens=2000
+            print(f"🔍 Starting Gemini 2.0 Flash query generation...")
+            print(f"   Company: {company_name}")
+            print(f"   Industry: {industry_context}")
+            print(f"   Requested queries: {num_queries}")
+            print(f"   Batch number: {batch_number}")
+            
+            # Use Gemini 2.0 Flash for query generation
+            print(f"📡 Sending request to Gemini 2.0 Flash...")
+            
+            response = await asyncio.to_thread(
+                self.model.generate_content,
+                prompt,
+                generation_config=genai.types.GenerationConfig(
+                    temperature=0.8,
+                    top_p=0.9,
+                    top_k=40,
+                    max_output_tokens=2000,
+                    response_mime_type="application/json"
+                )
             )
             
-            result = json.loads(response.choices[0].message.content or "{}")
-            return result.get('queries', [])
+            print(f"✅ Gemini 2.0 Flash response received")
+            print(f"   Response text length: {len(response.text) if response.text else 0}")
+            
+            if response.text:
+                print(f"📝 Parsing JSON response...")
+                result = json.loads(response.text)
+                queries = result.get('queries', [])
+                print(f"✅ Successfully generated {len(queries)} queries")
+                
+                # Log first few queries for verification
+                for i, query in enumerate(queries[:3], 1):
+                    print(f"   Query {i}: {query}")
+                
+                return queries
+            else:
+                print(f"⚠️ Empty response from Gemini, using fallback")
+                # Fallback to template-based generation if no response
+                return self._generate_fallback_queries(company_name, industry_context, num_queries)
             
         except Exception as e:
+            error_msg = str(e)
+            print(f"❌ Gemini query generation failed")
+            print(f"   Error type: {type(e).__name__}")
+            print(f"   Error message: {error_msg}")
+            
+            # Check for specific error types
+            if "quota" in error_msg.lower() or "429" in error_msg:
+                print(f"💰 Gemini quota/rate limit issue")
+            elif "api_key" in error_msg.lower() or "401" in error_msg:
+                print(f"🔑 Gemini API key issue")
+            elif "json" in error_msg.lower():
+                print(f"📄 JSON parsing error - response may not be valid JSON")
+                if hasattr(e, 'response') and e.response:
+                    print(f"   Raw response: {e.response}")
+            
+            import traceback
+            print(f"   Full traceback:")
+            traceback.print_exc()
+            
+            print(f"🔄 Falling back to template-based generation...")
             # Fallback to template-based generation if API fails
             return self._generate_fallback_queries(company_name, industry_context, num_queries)
     

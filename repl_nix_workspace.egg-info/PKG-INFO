@@ -1,0 +1,13 @@
+Metadata-Version: 2.4
+Name: repl-nix-workspace
+Version: 0.1.0
+Summary: Add your description here
+Requires-Python: >=3.11
+Requires-Dist: aiohttp>=3.12.15
+Requires-Dist: google-genai>=1.38.0
+Requires-Dist: google-generativeai>=0.8.0
+Requires-Dist: openai>=1.107.3
+Requires-Dist: pandas>=2.3.2
+Requires-Dist: plotly>=6.3.0
+Requires-Dist: streamlit>=1.49.1
+Requires-Dist: spacy>=3.7.0

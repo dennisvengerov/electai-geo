@@ -3,6 +3,7 @@ import asyncio
 import os
 from typing import Dict, List, Any, Optional
 from simple_entity_discovery import SimpleEntityDiscovery
+import spacy
 
 class CitationTracker:
     """Tracks and analyzes company citations in AI responses"""
@@ -11,45 +12,45 @@ class CitationTracker:
         self.company_patterns = {}
         # Initialize simplified entity discovery (no external dependencies)
         self.entity_discovery = SimpleEntityDiscovery()
+        # Load spaCy NER model (English)
+        try:
+            self.spacy_nlp = spacy.load("en_core_web_sm")
+        except Exception:
+            import subprocess
+            subprocess.run(["python", "-m", "spacy", "download", "en_core_web_sm"])
+            self.spacy_nlp = spacy.load("en_core_web_sm")
     
     def analyze_citation(self, response: str, company_name: str) -> Dict[str, Any]:
         """
         Analyze if and how a company is cited in the response
-        
-        Args:
-            response: The AI response text to analyze
-            company_name: The company name to look for
-            
         Returns:
-            Dictionary with citation analysis results
+            Dictionary with citation analysis results, including competitor positions
         """
-        
         if not response or not company_name:
             return {
                 'cited': False,
                 'context': None,
                 'position': None,
-                'competitors': []
+                'competitors': [],
+                'competitor_positions': {}
             }
-        
         # Normalize text for analysis
         normalized_response = response.lower()
         normalized_company = company_name.lower()
-        
         # Check for direct citations
         citation_info = self._find_company_mentions(normalized_response, normalized_company, response)
-        
         # Find competitors using enhanced entity discovery
         competitors = self._extract_competitors_enhanced(response, company_name)
-        
         # Determine ranking position if in a list
         position = self._find_ranking_position(response, company_name) if citation_info['cited'] else None
-        
+        # Extract all company positions from numbered lists
+        competitor_positions = self._extract_all_company_positions(response)
         return {
             'cited': citation_info['cited'],
             'context': citation_info['context'],
             'position': position,
-            'competitors': competitors
+            'competitors': competitors,
+            'competitor_positions': competitor_positions
         }
     
     def _find_company_mentions(self, normalized_response: str, normalized_company: str, original_response: str) -> Dict[str, Any]:
@@ -250,18 +251,69 @@ class CitationTracker:
         
         return None
     
-    def _extract_competitors_enhanced(self, response: str, company_name: str) -> List[str]:
-        """Extract competitors using simplified entity discovery with advanced pattern matching"""
-        
+    def _extract_competitors_enhanced(self, response: str, company_name: str) -> list:
+        """Extract competitors using both regex/heuristics and spaCy NER, then validate."""
+        competitors = set()
+        # Use simplified entity discovery (regex/heuristics)
         try:
-            # Use simplified entity discovery (no async required)
             competitors_data = self.entity_discovery.discover_competitors(response, company_name)
-            
-            # Extract just the company names for backward compatibility
-            # Use slightly lower threshold to include more single-word brands
-            return [comp['name'] for comp in competitors_data if comp.get('confidence', 0) >= 0.65]
-            
+            competitors.update([comp['name'] for comp in competitors_data if comp.get('confidence', 0) >= 0.65])
         except Exception as e:
-            print(f"Enhanced competitor extraction failed: {e}")
-            # Fall back to original method
-            return self._extract_competitors(response, company_name)
+            print(f"Entity discovery failed: {e}")
+        # Use spaCy NER
+        try:
+            doc = self.spacy_nlp(response)
+            for ent in doc.ents:
+                if ent.label_ == "ORG" and ent.text.lower() != company_name.lower():
+                    competitors.add(ent.text)
+        except Exception as e:
+            print(f"spaCy NER failed: {e}")
+        # Validate competitors using external API
+        competitors_list = list(competitors)
+        validated_competitors = self._validate_competitor_list_external_api(competitors_list)
+        return validated_competitors
+
+    def _extract_all_company_positions(self, response: str) -> dict:
+        """Extract all company names and their positions from numbered lists in the response."""
+        import re
+        company_positions = {}
+        lines = response.split('\n')
+        for line in lines:
+            # Match lines like '1. Company Name ...' or '2. Another Company ...'
+            match = re.match(r'^(\d+)\.\s*([A-Z][^\n\r\d\.:,\-]+)', line.strip())
+            if match:
+                pos = int(match.group(1))
+                name = match.group(2).strip()
+                # Clean up name (remove trailing punctuation, etc.)
+                name = re.sub(r'[\.:,\-]+$', '', name)
+                if name:
+                    company_positions[name] = pos
+        return company_positions
+
+    def _validate_competitor_list_external_api(self, competitors: list) -> list:
+        """Send the competitor list to an external API to filter out non-company words."""
+        import os
+        import openai
+        api_key = os.getenv("OPENAI_API_KEY")
+        if not api_key:
+            print("No OpenAI API key found, skipping validation.")
+            return competitors
+        openai.api_key = api_key
+        prompt = (
+            "Given the following list of words, return only those that are real company or organization names. "
+            "Remove any generic, non-company words (like 'the', 'best', etc). "
+            "List only the valid company names, one per line.\nList: " + ", ".join(competitors)
+        )
+        try:
+            response = openai.ChatCompletion.create(
+                model="gpt-3.5-turbo",
+                messages=[{"role": "user", "content": prompt}],
+                max_tokens=256,
+                temperature=0
+            )
+            filtered = response.choices[0].message["content"].split("\n")
+            filtered = [name.strip() for name in filtered if name.strip()]
+            return [name for name in filtered if name in competitors]
+        except Exception as e:
+            print(f"External API validation failed: {e}")
+            return competitors
