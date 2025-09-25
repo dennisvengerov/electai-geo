@@ -24,7 +24,7 @@ class PromptGenerator:
     
     async def generate_semantic_queries(
         self,
-        company_name: str,
+        company_name: str,  # Will not be used in queries, only for context
         industry_context: str = "",
         num_queries: int = 100
     ) -> List[str]:
@@ -84,9 +84,13 @@ class PromptGenerator:
             # Use Gemini 2.0 Flash for query generation
             print(f"📡 Sending request to Gemini 2.0 Flash...")
             
+            # Enable Google Search for current 2025 trends and data
+            tools = [genai.tools.GoogleSearchRetrieval()]
+            
             response = await asyncio.to_thread(
                 self.model.generate_content,
                 prompt,
+                tools=tools,
                 generation_config=genai.types.GenerationConfig(
                     temperature=0.8,
                     top_p=0.9,
@@ -106,8 +110,16 @@ class PromptGenerator:
                 print(f"✅ Successfully generated {len(queries)} queries")
                 
                 # Log first few queries for verification
+                print(f"📝 Sample generated queries:")
                 for i, query in enumerate(queries[:3], 1):
-                    print(f"   Query {i}: {query}")
+                    print(f"   {i}. {query}")
+                
+                # Verify no company names leaked into queries
+                company_mentions = sum(1 for q in queries if company_name.lower().replace("'", "").replace(" ", "") in q.lower().replace("'", "").replace(" ", ""))
+                if company_mentions > 0:
+                    print(f"⚠️  WARNING: {company_mentions} queries contain company name - this will bias results")
+                else:
+                    print(f"✅ No company name mentions detected - queries are unbiased")
                 
                 return queries
             else:
@@ -141,48 +153,68 @@ class PromptGenerator:
     
     def _create_generation_prompt(
         self,
-        company_name: str,
+        company_name: str,  # For context only, not included in queries
         industry_context: str,
         num_queries: int,
         batch_number: int
     ) -> str:
-        """Create a prompt for generating semantic queries"""
+        """Create a prompt for generating realistic consumer queries without company names"""
         
         context_info = f" in the {industry_context} industry" if industry_context else ""
         
         query_types = [
-            "comparison queries (vs competitors)",
-            "best of lists (top 10, best 2025)",
-            "problem-solving queries (solutions, alternatives)",
-            "review and recommendation queries",
-            "buying guide queries",
-            "feature-specific queries",
-            "price and value queries",
-            "use case specific queries",
-            "trend and future-focused queries",
-            "local and regional queries"
+            "best of lists and rankings",
+            "problem-solving and recommendations", 
+            "price and value comparisons",
+            "feature-specific searches",
+            "trending and current options",
+            "use case and application queries",
+            "quality and effectiveness searches",
+            "natural and sustainable options",
+            "budget and affordable alternatives",
+            "professional and expert recommendations"
         ]
         
         # Rotate query types for different batches
         primary_type = query_types[batch_number % len(query_types)]
         
         return f"""
-Generate {num_queries} diverse, realistic search queries that potential customers might use when researching companies{context_info}. 
+You are a consumer research expert with access to current internet data and real-time search trends. Generate realistic search queries that people actually type when researching {industry_context} products in 2025.
+
+CURRENT CONTEXT: It is 2025 and you have access to live Google Search data. Use this to understand what consumers are ACTUALLY searching for right now - current trends, popular products, seasonal factors, and emerging preferences in the {industry_context} space.
 
 Focus primarily on: {primary_type}
 
-Company context: {company_name}{context_info}
+CRITICAL RULES:
+1. NEVER mention specific company names in the queries
+2. Generate queries as if you're a consumer researching the market
+3. Use current 2025 context and trends
+4. Make queries sound natural and conversational
+5. Include current seasonal/trend elements (it's 2025)
+6. Vary query styles: short phrases, questions, comparisons
 
-Requirements:
-1. Queries should be natural and varied (different lengths, styles, formality levels)
-2. Include both broad industry queries and specific use-case queries
-3. Mix informational, commercial, and navigational intent
-4. Some queries should naturally favor established/popular brands
-5. Include comparison and competitive analysis queries
-6. Add seasonal, trending, and time-sensitive elements where relevant
-7. Make queries realistic - what real users would actually search
+Generate {num_queries} realistic consumer search queries for {industry_context} products that someone would actually type in 2025:
 
-Return the response in JSON format:
+Query Categories to Include:
+- Rankings: "best [product] 2025", "top [product] brands", "highest rated [product]"
+- Problem-solving: "dry lips solution", "long lasting [product]", "sensitive skin [product]"
+- Price-focused: "affordable [product]", "budget [product] options", "cheap good quality [product]"
+- Feature-specific: "natural [product]", "organic [product]", "moisturizing [product]"
+- Trending: "trending [product] 2025", "popular [product] right now", "viral [product]"
+- Use cases: "[product] for winter", "[product] for daily use", "professional [product]"
+- Comparisons: "drugstore vs luxury [product]", "[product] alternatives", "similar to [generic reference]"
+
+Examples for {industry_context}:
+- "best lip balm 2025"
+- "natural lip care products"
+- "affordable moisturizing lip balm"
+- "lip balm for dry winter lips"
+- "organic lip balm brands"
+- "long lasting lip balm"
+- "drugstore lip balm recommendations"
+- "trending lip care 2025"
+
+Return in JSON format:
 {{
     "queries": [
         "query 1 text",
@@ -191,56 +223,51 @@ Return the response in JSON format:
     ]
 }}
 
-Example types to include:
-- "best [product category] 2025"
-- "top 10 [industry] companies"
-- "[specific use case] recommendations"
-- "[product] vs [competitor] comparison"
-- "most reliable [product type]"
-- "affordable [product category] options"
-- "[specific feature] in [product]"
-- "reviews of [company/product]"
-- "[industry] trends 2025"
-- "sustainable [product category]"
+Make sure all queries sound like real consumer searches in 2025, without any specific brand mentions.
 """
     
     def _generate_fallback_queries(
         self,
-        company_name: str,
+        company_name: str,  # Not used in queries, only for context
         industry_context: str,
         num_queries: int
     ) -> List[str]:
-        """Generate fallback queries using templates if API fails"""
+        """Generate fallback queries using realistic consumer templates"""
         
         # Extract industry keywords
         industry_keywords = self._extract_industry_keywords(company_name, industry_context)
         
+        # Realistic consumer query templates (no company names)
         templates = [
-            "best {industry} companies 2025",
-            "top 10 {industry} brands",
-            "most popular {product} options",
-            "{industry} comparison guide",
-            "affordable {product} recommendations",
-            "premium {product} brands",
-            "sustainable {industry} companies",
-            "innovative {industry} solutions",
-            "{product} reviews and ratings",
-            "trusted {industry} providers",
-            "leading {product} manufacturers",
-            "{industry} market leaders",
-            "quality {product} options",
-            "reliable {industry} services",
-            "expert {product} recommendations"
+            "best {product} 2025",
+            "top {product} brands",
+            "affordable {product} options", 
+            "natural {product} recommendations",
+            "long lasting {product}",
+            "{product} for sensitive skin",
+            "organic {product} brands",
+            "drugstore {product} reviews",
+            "moisturizing {product}",
+            "trending {product} 2025",
+            "budget friendly {product}",
+            "{product} comparison guide",
+            "effective {product} for dry skin",
+            "popular {product} right now",
+            "sustainable {product} options",
+            "{product} with SPF protection",
+            "winter {product} recommendations",
+            "luxury vs drugstore {product}",
+            "cruelty free {product}",
+            "unscented {product} brands"
         ]
         
         queries = []
         for i in range(num_queries):
             template = templates[i % len(templates)]
             
-            # Fill in template with industry keywords
+            # Fill in template with product keywords only
             query = template.format(
-                industry=industry_keywords.get('industry', industry_context or 'business'),
-                product=industry_keywords.get('product', industry_context or 'service')
+                product=industry_keywords.get('product', industry_context or 'product')
             )
             
             queries.append(query)

@@ -80,13 +80,22 @@ def main():
         
         st.session_state.use_batch_analysis = use_batch_analysis
         
+        # Query generation improvements
+        st.info("🎯 **Improved Query Generation (2025)**")
+        st.markdown("""
+        - ✅ **Unbiased queries** - No company names mentioned
+        - ✅ **Real consumer searches** - "best lip balm 2025", "natural lip care"
+        - ✅ **Current trends** - Uses live 2025 data via Google Search
+        - ✅ **Organic citations** - Tests true market visibility
+        """)
+        
         # Analysis parameters
         st.subheader("Analysis Parameters")
         num_queries = st.slider("Number of queries", min_value=2, max_value=20, value=5, step=1)
         max_concurrent = st.slider("Max concurrent requests", min_value=1, max_value=10, value=5)
         
         if use_batch_analysis:
-            st.info("📊 Using advanced batch analysis with Gemini for better accuracy")
+            st.success("📊 Using advanced batch analysis with Gemini 2.5 Pro for superior accuracy")
         
     # Main interface
     col1, col2 = st.columns([2, 1])
@@ -231,287 +240,352 @@ def display_results(results, company_name):
     confidence = results['summary'].get('analysis_confidence', 0.0)
     competitors_count = len(results['summary'].get('competitors', []))
     
-    # Create a beautiful main performance card
-    performance_card = f"""
-    <div style="
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-        padding: 30px;
-        border-radius: 15px;
-        color: white;
-        margin: 20px 0;
-        box-shadow: 0 10px 30px rgba(0,0,0,0.2);
-    ">
-        <div style="text-align: center;">
-            <h2 style="margin: 0; font-size: 28px; font-weight: 300;">{company_name}</h2>
-            <p style="margin: 5px 0 20px 0; opacity: 0.9; font-size: 16px;">AI Visibility Performance</p>
-            
-            <div style="display: flex; justify-content: space-around; flex-wrap: wrap; gap: 20px;">
-                <div style="text-align: center; min-width: 120px;">
-                    <div style="font-size: 36px; font-weight: 700; margin-bottom: 5px;">{citation_rate:.1f}%</div>
-                    <div style="font-size: 14px; opacity: 0.8;">Citation Rate</div>
-                </div>
-                <div style="text-align: center; min-width: 120px;">
-                    <div style="font-size: 36px; font-weight: 700; margin-bottom: 5px;">{"#" + str(int(avg_position)) if avg_position > 0 else "N/A"}</div>
-                    <div style="font-size: 14px; opacity: 0.8;">Avg. Position</div>
-                </div>
-                <div style="text-align: center; min-width: 120px;">
-                    <div style="font-size: 36px; font-weight: 700; margin-bottom: 5px;">{total_citations}</div>
-                    <div style="font-size: 14px; opacity: 0.8;">Total Citations</div>
-                </div>
-                <div style="text-align: center; min-width: 120px;">
-                    <div style="font-size: 36px; font-weight: 700; margin-bottom: 5px;">{competitors_count}</div>
-                    <div style="font-size: 14px; opacity: 0.8;">Competitors</div>
-                </div>
-            </div>
-        </div>
-    </div>
-    """
+    # Clean, professional metrics display
+    col1, col2, col3, col4 = st.columns(4)
     
-    st.markdown(performance_card, unsafe_allow_html=True)
+    with col1:
+        st.metric(
+            label="Citation Rate",
+            value=f"{citation_rate:.1f}%",
+            delta=f"{'Strong' if citation_rate >= 50 else 'Moderate' if citation_rate >= 25 else 'Needs Work'}",
+            delta_color="normal" if citation_rate >= 25 else "inverse"
+        )
     
-    # Performance insights
+    with col2:
+        position_display = f"#{int(avg_position)}" if avg_position > 0 else "N/A"
+        position_delta = "Excellent" if avg_position <= 3 else "Good" if avg_position <= 5 else "Fair" if avg_position > 0 else None
+        st.metric(
+            label="Average Position", 
+            value=position_display,
+            delta=position_delta,
+            delta_color="normal" if avg_position <= 5 else "inverse"
+        )
+    
+    with col3:
+        st.metric(
+            label="Total Citations",
+            value=str(total_citations),
+            delta=f"out of {total_queries} queries"
+        )
+    
+    with col4:
+        st.metric(
+            label="Competitors Found",
+            value=str(competitors_count),
+            delta="Active market" if competitors_count > 5 else "Niche market"
+        )
+    
+    # Executive Summary Card
     if citation_rate >= 50:
-        st.success("🏆 **Excellent Visibility** - Your company has strong presence in AI recommendations")
+        st.success("🏆 **Leader Position** - Excellent AI visibility with strong market presence")
     elif citation_rate >= 25:
-        st.warning("⚡ **Growing Presence** - Good visibility with room for improvement")
+        st.info("📈 **Challenger Position** - Good visibility with growth opportunities")
+    elif citation_rate >= 10:
+        st.warning("⚡ **Emerging Position** - Moderate visibility, significant room for improvement")
     else:
-        st.error("📈 **Optimization Needed** - Low visibility presents significant growth opportunity")
+        st.error("🚨 **Invisible Position** - Urgent optimization needed for AI discoverability")
+    
+    st.divider()
     
     # Detailed visualizations
     tab1, tab2, tab3, tab4, tab5 = st.tabs(["Competitive Matrix", "AI Timeline", "Query Results", "Competitor Analysis", "Raw Data"])
     
     with tab1:
-        st.subheader("🎯 Competitive Positioning Matrix")
-        st.markdown("*Position your company against competitors in the AI recommendation landscape*")
+        st.subheader("🎯 Market Position Analysis")
+        st.markdown("*Strategic positioning of your company against key competitors*")
         
         competitors = results['summary'].get('competitors', [])
         if competitors and len(competitors) > 0:
-            # Prepare data for positioning matrix
-            matrix_data = []
+            # Top competitors analysis
+            top_competitors = competitors[:8]  # Focus on top 8 for clarity
             
-            # Add target company
-            matrix_data.append({
-                'Company': company_name,
-                'Citation_Frequency': citation_rate,
-                'Avg_Position': avg_position if avg_position > 0 else 10,
-                'Total_Mentions': total_citations,
-                'Is_Target': True,
-                'Position_Inverted': 11 - (avg_position if avg_position > 0 else 10)  # Invert for better visualization
-            })
+            # Create clean comparison chart
+            comp_names = [comp['name'] for comp in top_competitors]
+            comp_citations = [comp['mentions'] for comp in top_competitors]
+            comp_positions = [comp.get('avg_position', 10) for comp in top_competitors]
             
-            # Add competitors
-            for comp in competitors[:15]:  # Limit to top 15 for readability
-                comp_citation_rate = (comp['mentions'] / total_queries * 100) if total_queries > 0 else 0
-                comp_avg_pos = comp.get('avg_position', 10)
-                if comp_avg_pos == 0:
-                    comp_avg_pos = 10
-                
-                matrix_data.append({
-                    'Company': comp['name'],
-                    'Citation_Frequency': comp_citation_rate,
-                    'Avg_Position': comp_avg_pos,
-                    'Total_Mentions': comp['mentions'],
-                    'Is_Target': False,
-                    'Position_Inverted': 11 - comp_avg_pos
-                })
+            # Add your company
+            comp_names.insert(0, f"{company_name} (YOU)")
+            comp_citations.insert(0, total_citations)
+            comp_positions.insert(0, avg_position if avg_position > 0 else 10)
             
-            df_matrix = pd.DataFrame(matrix_data)
-            
-            # Create the positioning matrix
-            fig_matrix = px.scatter(
-                df_matrix,
-                x='Citation_Frequency',
-                y='Position_Inverted',
-                size='Total_Mentions',
-                color='Is_Target',
-                hover_name='Company',
-                hover_data={'Citation_Frequency': ':.1f%', 'Avg_Position': True, 'Total_Mentions': True},
-                title="Competitive Positioning Matrix",
-                labels={
-                    'Citation_Frequency': 'Citation Frequency (%)',
-                    'Position_Inverted': 'Ranking Quality (Higher = Better Position)',
-                    'Total_Mentions': 'Total Mentions'
-                },
-                color_discrete_map={True: '#FF6B6B', False: '#4DABF7'},
-                size_max=60
-            )
-            
-            # Customize the matrix
-            fig_matrix.update_layout(
-                width=800,
-                height=600,
-                showlegend=True,
-                legend=dict(
-                    orientation="h",
-                    yanchor="bottom",
-                    y=1.02,
-                    xanchor="right",
-                    x=1
-                )
-            )
-            
-            # Add quadrant lines
-            max_citation = df_matrix['Citation_Frequency'].max()
-            max_position = df_matrix['Position_Inverted'].max()
-            
-            fig_matrix.add_hline(y=max_position/2, line_dash="dash", line_color="gray", opacity=0.5)
-            fig_matrix.add_vline(x=max_citation/2, line_dash="dash", line_color="gray", opacity=0.5)
-            
-            # Add quadrant labels
-            fig_matrix.add_annotation(x=max_citation*0.75, y=max_position*0.75, text="Leaders", 
-                                    showarrow=False, font=dict(size=14, color="gray"))
-            fig_matrix.add_annotation(x=max_citation*0.25, y=max_position*0.75, text="High Quality", 
-                                    showarrow=False, font=dict(size=14, color="gray"))
-            fig_matrix.add_annotation(x=max_citation*0.75, y=max_position*0.25, text="High Visibility", 
-                                    showarrow=False, font=dict(size=14, color="gray"))
-            fig_matrix.add_annotation(x=max_citation*0.25, y=max_position*0.25, text="Emerging", 
-                                    showarrow=False, font=dict(size=14, color="gray"))
-            
-            st.plotly_chart(fig_matrix, use_container_width=True)
-            
-            # Strategic insights
-            your_position = df_matrix[df_matrix['Is_Target'] == True].iloc[0]
-            
+            # Create side-by-side comparison
             col1, col2 = st.columns(2)
             
             with col1:
-                st.markdown("**🎯 Your Position:**")
-                if your_position['Citation_Frequency'] > max_citation/2 and your_position['Position_Inverted'] > max_position/2:
-                    st.success("**Leader Quadrant** - Strong visibility and positioning")
-                elif your_position['Citation_Frequency'] < max_citation/2 and your_position['Position_Inverted'] > max_position/2:
-                    st.info("**High Quality** - Good positioning, need more visibility")
-                elif your_position['Citation_Frequency'] > max_citation/2 and your_position['Position_Inverted'] < max_position/2:
-                    st.warning("**High Visibility** - Frequently mentioned but lower positions")
-                else:
-                    st.error("**Emerging** - Opportunity for growth in both areas")
+                st.markdown("**📊 Citation Frequency Comparison**")
+                citation_fig = go.Figure(data=[
+                    go.Bar(
+                        x=comp_citations,
+                        y=comp_names,
+                        orientation='h',
+                        marker_color=['#FF6B6B' if name.endswith('(YOU)') else '#E8F4FD' for name in comp_names],
+                        text=[f"{citations}" for citations in comp_citations],
+                        textposition='auto'
+                    )
+                ])
+                citation_fig.update_layout(
+                    title="Total Mentions",
+                    xaxis_title="Number of Citations",
+                    height=400,
+                    showlegend=False,
+                    margin=dict(l=150, r=50, t=50, b=50)
+                )
+                st.plotly_chart(citation_fig, use_container_width=True)
             
             with col2:
-                st.markdown("**📈 Strategic Opportunities:**")
-                leaders = df_matrix[(df_matrix['Citation_Frequency'] > max_citation/2) & 
-                                  (df_matrix['Position_Inverted'] > max_position/2) & 
-                                  (df_matrix['Is_Target'] == False)]
-                if not leaders.empty:
-                    top_competitor = leaders.iloc[0]
-                    st.info(f"📊 Study **{top_competitor['Company']}** strategy")
-                    st.info(f"🎯 Target citation rate: {top_competitor['Citation_Frequency']:.1f}%")
+                st.markdown("**🏆 Average Position Comparison**")
+                # Invert positions for better visualization (lower position = better = higher bar)
+                inverted_positions = [11 - pos for pos in comp_positions]
+                position_fig = go.Figure(data=[
+                    go.Bar(
+                        x=inverted_positions,
+                        y=comp_names,
+                        orientation='h',
+                        marker_color=['#FF6B6B' if name.endswith('(YOU)') else '#E8F4FD' for name in comp_names],
+                        text=[f"#{int(pos)}" if pos <= 10 else "N/A" for pos in comp_positions],
+                        textposition='auto'
+                    )
+                ])
+                position_fig.update_layout(
+                    title="Ranking Quality (Higher = Better Position)",
+                    xaxis_title="Position Score (11 - actual position)",
+                    height=400,
+                    showlegend=False,
+                    margin=dict(l=150, r=50, t=50, b=50)
+                )
+                st.plotly_chart(position_fig, use_container_width=True)
+            
+            # Strategic insights
+            st.markdown("### 💡 Strategic Insights")
+            
+            insight_col1, insight_col2, insight_col3 = st.columns(3)
+            
+            with insight_col1:
+                # Market position analysis
+                your_rank_citations = sorted(comp_citations, reverse=True).index(total_citations) + 1
+                your_rank_position = sorted([p for p in comp_positions if p <= 10]).index(avg_position) + 1 if avg_position <= 10 else len([p for p in comp_positions if p <= 10]) + 1
+                
+                st.metric(
+                    "Citation Rank",
+                    f"#{your_rank_citations}",
+                    f"of {len(comp_names)} companies"
+                )
+                
+                st.metric(
+                    "Position Rank", 
+                    f"#{your_rank_position}" if avg_position <= 10 else "Unranked",
+                    f"of {len([p for p in comp_positions if p <= 10])} ranked" if avg_position <= 10 else "Not in top positions"
+                )
+            
+            with insight_col2:
+                # Opportunity analysis
+                st.markdown("**🎯 Key Opportunities**")
+                
+                # Find best performing competitor
+                best_comp_idx = comp_citations[1:].index(max(comp_citations[1:])) + 1
+                best_competitor = comp_names[best_comp_idx]
+                best_citations = comp_citations[best_comp_idx]
+                
+                if best_citations > total_citations:
+                    gap = best_citations - total_citations
+                    st.info(f"📈 Close gap with **{best_competitor.replace(' (YOU)', '')}** (+{gap} citations needed)")
+                
+                # Position improvement opportunity
+                if avg_position > 3:
+                    better_positions = [p for p in comp_positions[1:] if p < avg_position and p > 0]
+                    if better_positions:
+                        target_pos = min(better_positions)
+                        st.info(f"🏆 Target position **#{int(target_pos)}** (currently #{int(avg_position)})")
+            
+            with insight_col3:
+                # Market landscape
+                st.markdown("**🌍 Market Landscape**")
+                
+                total_market_citations = sum(comp_citations)
+                market_share = (total_citations / total_market_citations * 100) if total_market_citations > 0 else 0
+                
+                st.metric(
+                    "Market Share",
+                    f"{market_share:.1f}%",
+                    "of total AI mentions"
+                )
+                
+                if citation_rate >= 50:
+                    st.success("🏆 **Market Leader**")
+                elif citation_rate >= 25:
+                    st.info("📈 **Strong Player**") 
+                elif citation_rate >= 10:
+                    st.warning("⚡ **Emerging Brand**")
+                else:
+                    st.error("🚨 **Needs Visibility**")
         else:
-            st.info("No competitor data available for positioning matrix.")
+            st.info("📊 No competitor data available. Run analysis with more queries to identify market players.")
     
     with tab2:
-        st.subheader("🕐 AI Recommendation Timeline & Positioning")
-        st.markdown("*Track how your company's positioning evolves across different query contexts*")
+        st.subheader("📊 Performance Breakdown")
+        st.markdown("*Detailed analysis of your AI visibility across different query types*")
         
         if results['query_results']:
-            # Prepare timeline data
+            # Analyze queries by type and performance
+            query_analysis = []
             query_results = results['query_results']
-            timeline_data = []
             
             for i, result in enumerate(query_results):
                 cited = result.get('cited', False)
                 position = result.get('position', None)
                 mention_type = result.get('mention_type', 'none')
-                ranking_type = result.get('ranking_type', '')
                 query_text = result.get('query', '')
                 
-                # Categorize query types
-                query_category = "General"
-                if any(word in query_text.lower() for word in ['price', 'cheap', 'affordable', 'budget']):
-                    query_category = "Price-Focused"
-                elif any(word in query_text.lower() for word in ['natural', 'organic', 'clean', 'pure']):
-                    query_category = "Natural/Organic"
-                elif any(word in query_text.lower() for word in ['premium', 'luxury', 'high-end', 'best']):
-                    query_category = "Premium"
-                elif any(word in query_text.lower() for word in ['top', 'leading', 'popular', 'trending']):
-                    query_category = "Popularity"
+                # Smart query categorization
+                query_type = "General"
+                if any(word in query_text.lower() for word in ['best', 'top', 'recommended', 'leading']):
+                    query_type = "🏆 Rankings & Lists"
+                elif any(word in query_text.lower() for word in ['affordable', 'cheap', 'budget', 'price']):
+                    query_type = "💰 Price-Focused"
+                elif any(word in query_text.lower() for word in ['natural', 'organic', 'sustainable', 'eco']):
+                    query_type = "🌿 Natural/Eco"
+                elif any(word in query_text.lower() for word in ['review', 'rating', 'opinion', 'feedback']):
+                    query_type = "⭐ Reviews & Ratings"
+                elif any(word in query_text.lower() for word in ['vs', 'versus', 'compare', 'comparison']):
+                    query_type = "⚖️ Comparisons"
+                elif any(word in query_text.lower() for word in ['sensitive', 'dry', 'winter', 'daily']):
+                    query_type = "🎯 Specific Needs"
                 
-                # Determine positioning sentiment
-                context = result.get('context', '')
-                sentiment = "Neutral"
-                if context:
-                    if any(word in context.lower() for word in ['leading', 'top', 'best', 'excellent', 'premium']):
-                        sentiment = "Positive"
-                    elif any(word in context.lower() for word in ['alternative', 'cheaper', 'budget', 'option']):
-                        sentiment = "Alternative"
-                    elif any(word in context.lower() for word in ['natural', 'organic', 'clean']):
-                        sentiment = "Natural"
-                
-                timeline_data.append({
-                    'Query_Index': i + 1,
-                    'Query_Category': query_category,
-                    'Position': position if position else 11,
-                    'Cited': cited,
-                    'Mention_Type': mention_type,
-                    'Sentiment': sentiment,
-                    'Query_Text': query_text[:60] + "..." if len(query_text) > 60 else query_text,
-                    'Position_Inverted': 11 - position if position else 0
+                query_analysis.append({
+                    'query_type': query_type,
+                    'cited': cited,
+                    'position': position if cited else None,
+                    'query_text': query_text
                 })
             
-            df_timeline = pd.DataFrame(timeline_data)
-            cited_df = df_timeline[df_timeline['Cited'] == True]
+            # Create performance summary by category
+            df_analysis = pd.DataFrame(query_analysis)
+            category_performance = df_analysis.groupby('query_type').agg({
+                'cited': ['count', 'sum', 'mean'],
+                'position': 'mean'
+            }).round(2)
             
-            if not cited_df.empty:
-                # Position trend over query sequence
-                fig_timeline = px.line(
-                    cited_df,
-                    x='Query_Index',
-                    y='Position_Inverted',
-                    color='Query_Category',
-                    title="Position Performance Across Query Types",
-                    labels={
-                        'Query_Index': 'Query Sequence',
-                        'Position_Inverted': 'Ranking Quality (Higher = Better)',
-                        'Query_Category': 'Query Type'
-                    },
-                    markers=True
-                )
-                
-                fig_timeline.update_layout(height=400)
-                st.plotly_chart(fig_timeline, use_container_width=True)
-                
-                # Positioning heatmap by category and sentiment
-                if len(cited_df) > 1:
-                    heatmap_data = cited_df.groupby(['Query_Category', 'Sentiment']).agg({
-                        'Position': 'mean',
-                        'Query_Index': 'count'
-                    }).round(1)
-                    
-                    if not heatmap_data.empty:
-                        fig_heatmap = px.imshow(
-                            heatmap_data['Position'].unstack(fill_value=0),
-                            title="Average Position by Query Type & Sentiment Context",
-                            labels=dict(x="Sentiment Context", y="Query Category", color="Avg Position"),
-                            color_continuous_scale="RdYlGn_r"
-                        )
-                        fig_heatmap.update_layout(height=400)
-                        st.plotly_chart(fig_heatmap, use_container_width=True)
-                
-                # Insights panel
-                col1, col2, col3 = st.columns(3)
+            category_performance.columns = ['total_queries', 'citations', 'citation_rate', 'avg_position']
+            category_performance['citation_rate'] *= 100
+            category_performance = category_performance.reset_index()
+            if len(category_performance) > 1:
+                # Category performance visualization
+                col1, col2 = st.columns(2)
                 
                 with col1:
-                    st.markdown("**🎯 Best Performing Categories:**")
-                    best_categories = cited_df.groupby('Query_Category')['Position_Inverted'].mean().sort_values(ascending=False)
-                    for cat, score in best_categories.head(3).items():
-                        st.success(f"**{cat}**: {11-score:.1f} avg position")
+                    st.markdown("**📈 Citation Rate by Query Type**")
+                    
+                    # Create horizontal bar chart for citation rates
+                    citation_fig = go.Figure(data=[
+                        go.Bar(
+                            x=category_performance['citation_rate'],
+                            y=category_performance['query_type'],
+                            orientation='h',
+                            marker_color='#4DABF7',
+                            text=[f"{rate:.0f}%" for rate in category_performance['citation_rate']],
+                            textposition='auto'
+                        )
+                    ])
+                    citation_fig.update_layout(
+                        title="Citation Success Rate",
+                        xaxis_title="Citation Rate (%)",
+                        height=350,
+                        showlegend=False,
+                        margin=dict(l=150, r=50, t=50, b=50)
+                    )
+                    st.plotly_chart(citation_fig, use_container_width=True)
                 
                 with col2:
-                    st.markdown("**💡 Positioning Context:**")
-                    sentiment_counts = cited_df['Sentiment'].value_counts()
-                    for sentiment, count in sentiment_counts.items():
-                        if sentiment != "Neutral":
-                            st.info(f"**{sentiment}**: {count} mentions")
+                    st.markdown("**🏆 Average Position by Query Type**")
+                    
+                    # Filter out categories with no citations for position chart
+                    positioned_cats = category_performance[category_performance['avg_position'].notna()]
+                    
+                    if not positioned_cats.empty:
+                        # Invert positions for visualization (lower = better = higher bar)
+                        inverted_pos = [11 - pos for pos in positioned_cats['avg_position']]
+                        
+                        position_fig = go.Figure(data=[
+                            go.Bar(
+                                x=inverted_pos,
+                                y=positioned_cats['query_type'],
+                                orientation='h',
+                                marker_color='#FF8C42',
+                                text=[f"#{pos:.1f}" for pos in positioned_cats['avg_position']],
+                                textposition='auto'
+                            )
+                        ])
+                        position_fig.update_layout(
+                            title="Average Ranking Position",
+                            xaxis_title="Position Quality (Higher = Better)",
+                            height=350,
+                            showlegend=False,
+                            margin=dict(l=150, r=50, t=50, b=50)
+                        )
+                        st.plotly_chart(position_fig, use_container_width=True)
+                    else:
+                        st.info("No position data available for ranked queries")
                 
-                with col3:
-                    st.markdown("**📈 Trends:**")
-                    if len(cited_df) >= 3:
-                        first_half = cited_df.head(len(cited_df)//2)['Position'].mean()
-                        second_half = cited_df.tail(len(cited_df)//2)['Position'].mean()
-                        trend = "↗️ Improving" if second_half < first_half else "↘️ Declining" if second_half > first_half else "➡️ Stable"
-                        st.metric("Position Trend", trend)
+                # Performance insights table
+                st.markdown("### 📋 Category Performance Summary")
+                
+                # Create a clean summary table
+                summary_data = []
+                for _, row in category_performance.iterrows():
+                    summary_data.append({
+                        "Query Category": row['query_type'],
+                        "Total Queries": int(row['total_queries']),
+                        "Citations": int(row['citations']),
+                        "Citation Rate": f"{row['citation_rate']:.1f}%",
+                        "Avg. Position": f"#{row['avg_position']:.1f}" if pd.notna(row['avg_position']) else "N/A",
+                        "Performance": "🟢 Strong" if row['citation_rate'] >= 50 else "🟡 Moderate" if row['citation_rate'] >= 25 else "🔴 Weak"
+                    })
+                
+                summary_df = pd.DataFrame(summary_data)
+                st.dataframe(summary_df, use_container_width=True, hide_index=True)
+                
+                # Strategic recommendations
+                st.markdown("### 💡 Strategic Recommendations")
+                
+                rec_col1, rec_col2 = st.columns(2)
+                
+                with rec_col1:
+                    st.markdown("**🎯 Strongest Performance**")
+                    best_category = category_performance.loc[category_performance['citation_rate'].idxmax()]
+                    st.success(f"**{best_category['query_type']}** - {best_category['citation_rate']:.1f}% citation rate")
+                    if pd.notna(best_category['avg_position']):
+                        st.info(f"Average position: #{best_category['avg_position']:.1f}")
+                    st.markdown("*Continue optimizing for these query types*")
+                
+                with rec_col2:
+                    st.markdown("**📈 Growth Opportunity**")
+                    worst_category = category_performance.loc[category_performance['citation_rate'].idxmin()]
+                    if worst_category['citation_rate'] < 25:
+                        st.error(f"**{worst_category['query_type']}** - {worst_category['citation_rate']:.1f}% citation rate")
+                        st.markdown("*Focus content optimization here*")
+                    else:
+                        st.info("All categories performing well!")
+                        
             else:
-                st.warning("No citations found to analyze positioning trends.")
+                st.info("📊 Run analysis with more diverse queries to see category breakdowns")
+                
+            # Individual query results summary
+            st.markdown("### 📝 Individual Query Results")
+            query_summary = []
+            for i, qa in enumerate(query_analysis):
+                query_summary.append({
+                    "Query": qa['query_text'][:60] + "..." if len(qa['query_text']) > 60 else qa['query_text'],
+                    "Category": qa['query_type'],
+                    "Cited": "✅ Yes" if qa['cited'] else "❌ No",
+                    "Position": f"#{int(qa['position'])}" if qa['position'] else "N/A"
+                })
+            
+            query_df = pd.DataFrame(query_summary)
+            st.dataframe(query_df, use_container_width=True, hide_index=True)
+            
         else:
-            st.info("No query results available for timeline analysis.")
+            st.info("📊 No query data available. Run an analysis to see performance breakdowns.")
     
     with tab3:
         st.subheader("📋 Individual Query Results")
