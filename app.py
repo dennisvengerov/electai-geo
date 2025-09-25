@@ -686,7 +686,7 @@ def display_results(results, company_name):
                 title="Top 10 Competitors by Average Ranking Position (Lower is Better)",
                 labels={'Avg Position': 'Average Position'},
                 color='Avg Position',
-                color_continuous_scale='Blues_r',
+                color_continuous_scale='RdYlGn_r',  # Red (worse position) to Green (better position)
                 hover_data=['Mentions', 'Positions']
             )
             fig_competitors.update_xaxes(tickangle=45)
