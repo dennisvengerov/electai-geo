@@ -249,8 +249,21 @@ CRITICAL ANALYSIS REQUIREMENTS:
 4. COMPETITOR MAPPING: For each numbered list, extract ALL companies and their positions:
    - Company at position 1, Company at position 2, etc.
    - Include the ranking criteria (best, top, recommended, etc.)
+   - NORMALIZE company names: treat "Tesla" and "Tesla, Inc." as the same company
+   - Distinguish between actual companies vs products/services/generic terms
 
 5. CONTEXT EXTRACTION: Capture the exact text mentioning each company
+
+6. COMPANY NORMALIZATION: Apply these rules when identifying companies:
+   - Remove corporate suffixes: "Inc.", "Corp.", "LLC", "Ltd.", "Co.", "Corporation", "Company"
+   - Handle special cases: "Alphabet Inc." → "Google", "Meta Platforms" → "Meta", "X Corp" → "X"
+   - Treat variations as the same company: "Tesla" = "Tesla, Inc." = "Tesla Motors"
+   - Focus on actual companies, not products or generic terms
+
+7. IMPLICIT POSITION TRACKING: When no explicit numbering exists:
+   - Assign positions based on mention order in the response
+   - First company mentioned = position 1, second = position 2, etc.
+   - Only count actual company names, not generic terms
 
 Return JSON in this EXACT format:
 {{

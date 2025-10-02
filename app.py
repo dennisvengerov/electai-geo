@@ -7,6 +7,11 @@ import asyncio
 import json
 from datetime import datetime
 import time
+import os
+from dotenv import load_dotenv
+
+# Load environment variables from .env file
+load_dotenv()
 
 from geo_analyzer import GEOAnalyzer
 from utils import export_to_csv, export_to_json
@@ -364,7 +369,17 @@ def display_results(results, company_name):
             with insight_col1:
                 # Market position analysis
                 your_rank_citations = sorted(comp_citations, reverse=True).index(total_citations) + 1
-                your_rank_position = sorted([p for p in comp_positions if p <= 10]).index(avg_position) + 1 if avg_position <= 10 else len([p for p in comp_positions if p <= 10]) + 1
+                
+                # Handle position ranking safely
+                if avg_position > 0 and avg_position <= 10:
+                    filtered_positions = [p for p in comp_positions if p <= 10]
+                    try:
+                        your_rank_position = sorted(filtered_positions).index(avg_position) + 1
+                    except ValueError:
+                        # Position not found in list, calculate approximate rank
+                        your_rank_position = len([p for p in filtered_positions if p < avg_position]) + 1
+                else:
+                    your_rank_position = len([p for p in comp_positions if p <= 10]) + 1
                 
                 st.metric(
                     "Citation Rank",
@@ -374,8 +389,8 @@ def display_results(results, company_name):
                 
                 st.metric(
                     "Position Rank", 
-                    f"#{your_rank_position}" if avg_position <= 10 else "Unranked",
-                    f"of {len([p for p in comp_positions if p <= 10])} ranked" if avg_position <= 10 else "Not in top positions"
+                    f"#{your_rank_position}" if avg_position > 0 and avg_position <= 10 else "Unranked",
+                    f"of {len([p for p in comp_positions if p <= 10])} ranked" if avg_position > 0 and avg_position <= 10 else "Not in top positions"
                 )
             
             with insight_col2:
@@ -667,33 +682,52 @@ def display_results(results, company_name):
         
         competitors = results['summary'].get('competitors', [])
         if competitors:
-            # Competitor mention frequency and average position
-            competitor_df = pd.DataFrame([
-                {
+            # --- Calculate Visibility Score ---
+            competitor_data = []
+            for comp in competitors:
+                avg_pos = comp.get('avg_position', 0)
+                mentions = comp.get('mentions', 0)
+                
+                # Calculate score: (11 - position) * mentions. Unranked companies get a low score.
+                position_score = (11 - avg_pos) if avg_pos > 0 else 1
+                visibility_score = position_score * mentions
+                
+                competitor_data.append({
                     'Competitor': comp['name'],
-                    'Mentions': comp['mentions'],
-                    'Avg Position': comp.get('avg_position', 0),
+                    'Mentions': mentions,
+                    'Avg Position': f"#{avg_pos:.1f}" if avg_pos > 0 else "N/A",
+                    'Visibility Score': visibility_score,
                     'Positions': ', '.join(str(p) for p in comp.get('positions', []))
-                }
-                for comp in competitors
-            ])
-            # Bar chart: Top 10 competitors by average position (lower is better)
-            top10 = competitor_df.head(10)
+                })
+            
+            competitor_df = pd.DataFrame(competitor_data)
+            competitor_df = competitor_df.sort_values(by="Visibility Score", ascending=False)
+            
+            # --- Chart: Top 10 Competitors by Visibility Score ---
+            st.markdown("#### Competitor Visibility Score (Higher is Better)")
+            
+            top_10_df = competitor_df.head(10)
+            
             fig_competitors = px.bar(
-                top10,
-                x='Competitor',
-                y='Avg Position',
-                title="Top 10 Competitors by Average Ranking Position (Lower is Better)",
-                labels={'Avg Position': 'Average Position'},
-                color='Avg Position',
-                color_continuous_scale='RdYlGn_r',  # Red (worse position) to Green (better position)
-                hover_data=['Mentions', 'Positions']
+                top_10_df.sort_values(by="Visibility Score", ascending=True),
+                x='Visibility Score',
+                y='Competitor',
+                orientation='h',
+                title="Top 10 Competitors by Visibility Score",
+                labels={'Visibility Score': 'Visibility Score (Position & Mentions)'},
+                color='Visibility Score',
+                color_continuous_scale='Blues',
+                hover_data=['Mentions', 'Avg Position']
             )
-            fig_competitors.update_xaxes(tickangle=45)
             st.plotly_chart(fig_competitors, use_container_width=True)
-            # Table: All competitors with positions
-            st.write("**All Competitors:**")
-            st.dataframe(competitor_df, use_container_width=True)
+
+            # --- Table: All competitors with new score ---
+            st.markdown("#### All Competitors Overview")
+            st.dataframe(
+                competitor_df[['Competitor', 'Visibility Score', 'Mentions', 'Avg Position', 'Positions']], 
+                use_container_width=True,
+                hide_index=True
+            )
         else:
             st.info("No competitor data available from the analysis.")
     
