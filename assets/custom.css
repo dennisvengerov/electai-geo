@@ -1,0 +1,776 @@
+/* ---
+    ELECTAI GEO - CUSTOM STYLESHEET
+    --- */
+
+/* --- Fonts & Global Styles --- */
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
+
+/* CRITICAL: Remove ALL default spacing */
+* {
+    margin: 0;
+    padding: 0;
+}
+
+html {
+    margin: 0 !important;
+    padding: 0 !important;
+    background-color: #000000 !important;
+    overflow-x: hidden;
+}
+
+body {
+    font-family: 'Inter', sans-serif;
+    background-color: #000000 !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    overflow-x: hidden;
+}
+
+html, body, #root {
+    background-color: #000000 !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    width: 100%;
+    height: 100%;
+    overflow-x: hidden;
+}
+
+/* More specific Streamlit container targeting */
+.stApp > section {
+    background-color: transparent !important;
+}
+
+.stApp > section > .main {
+    background-color: transparent !important;
+}
+
+.stApp section[data-testid="stAppViewContainer"] > div {
+    background-color: transparent !important;
+}
+
+/* Hide Streamlit's default elements and toolbar */
+.stApp > header, 
+footer,
+header[data-testid="stHeader"],
+div[data-testid="stToolbar"],
+div[data-testid="stDecoration"],
+div[data-testid="stStatusWidget"] {
+    display: none !important;
+    visibility: hidden !important;
+    height: 0 !important;
+    position: absolute !important;
+}
+
+/* Hide the iframe toolbar if present */
+iframe {
+    margin: 0 !important;
+    padding: 0 !important;
+}
+
+/* Force remove any top spacing from toolbar */
+header {
+    display: none !important;
+}
+
+#MainMenu {
+    visibility: hidden !important;
+}
+
+footer {
+    visibility: hidden !important;
+}
+
+/* Remove ALL white backgrounds - comprehensive fix */
+[data-testid="stVerticalBlock"],
+[data-testid="stHorizontalBlock"],
+[data-testid="column"],
+.main .block-container,
+.element-container,
+div.row-widget,
+div[data-testid="element-container"],
+section[data-testid="stSidebar"],
+.block-container,
+div[class^="st-"],
+div[class*="css"],
+div[class*="element"],
+[class*="Container"] {
+    background-color: transparent !important;
+}
+
+/* Specifically target expander and JSON viewer containers to prevent white */
+div[data-testid="stExpander"],
+div[data-testid="stExpander"] > div,
+div[data-testid="stExpander"] div,
+.stJson > div,
+.stJson div {
+    background-color: transparent !important;
+}
+
+/* Remove white from all element containers */
+.element-container > div,
+.stMarkdown > div,
+section > div:not([data-testid="stMetric"]) {
+    background-color: transparent !important;
+}
+
+/* Target any remaining white containers */
+.main > div,
+.main div[class],
+[data-testid="stVerticalBlockBorderWrapper"],
+[class*="element"] {
+    background-color: transparent !important;
+}
+
+/* Fix for white strip at top - NUCLEAR OPTION */
+.main .block-container {
+    padding-top: 0 !important;
+    margin-top: 0 !important;
+    padding: 0 !important;
+}
+
+.main {
+    padding-top: 0 !important;
+    margin-top: 0 !important;
+}
+
+div[data-testid="stVerticalBlock"] {
+    padding-top: 0 !important;
+    margin-top: 0 !important;
+}
+
+div[data-testid="stVerticalBlock"] > div:first-child {
+    padding-top: 0 !important;
+    margin-top: 0 !important;
+}
+
+/* Remove gap above app - EXTREME VERSION */
+.stApp {
+    padding-top: 0 !important;
+    margin-top: 0 !important;
+    top: 0 !important;
+}
+
+section[data-testid="stAppViewContainer"] {
+    padding-top: 0 !important;
+    margin-top: 0 !important;
+    top: 0 !important;
+}
+
+/* Target the app view block specifically */
+section.main {
+    padding-top: 0 !important;
+    margin-top: 0 !important;
+    top: 0 !important;
+}
+
+/* Remove any default spacing */
+[data-testid="block-container"] {
+    padding-top: 0 !important;
+    margin-top: 0 !important;
+}
+
+/* Ensure no gap from Streamlit's default spacing */
+.main .block-container {
+    margin-top: 0 !important;
+    padding-top: 0rem !important;
+}
+
+/* Remove white background from info/warning boxes */
+.stAlert {
+    background-color: rgba(255, 165, 0, 0.15) !important;
+    border: 1px solid rgba(255, 165, 0, 0.4) !important;
+    backdrop-filter: blur(12px);
+    color: #FFD700 !important;
+}
+
+.stAlert [data-testid="stMarkdownContainer"] p {
+    color: #FFD700 !important;
+}
+
+/* --- Background Image --- */
+.stApp {
+    background-image: url(data:image/png;base64,{bg_image});
+    background-size: 100% 100%; /* Force background to fill entire viewport */
+    background-position: top center;
+    background-repeat: no-repeat;
+    background-attachment: fixed;
+    min-height: 100vh;
+    width: 100vw;
+    margin: 0 !important;
+    padding: 0 !important;
+    position: relative;
+    top: 0;
+}
+
+/* Ensure main content area is transparent and full height */
+.main {
+    background-color: transparent !important;
+    min-height: 100vh;
+    padding-top: 0 !important;
+    margin-top: 0 !important;
+}
+
+section[data-testid="stAppViewContainer"] {
+    background-color: transparent !important;
+    padding-top: 0 !important;
+    margin-top: 0 !important;
+}
+
+section.main > div {
+    background-color: transparent !important;
+}
+
+/* --- Glassmorphism Card Effect - Enhanced --- */
+div[data-testid="stVerticalBlock"] > [data-testid="stHorizontalBlock"] > [data-testid="stVerticalBlock"] > div[data-testid="element-container"],
+div[data-testid="stMetric"] {
+    background: rgba(18, 18, 18, 0.75); /* More opaque for better visibility */
+    backdrop-filter: blur(16px) saturate(200%);
+    -webkit-backdrop-filter: blur(16px) saturate(200%);
+    border-radius: 25px;
+    border: 2px solid rgba(255, 165, 0, 0.3);
+    padding: 3em;
+    margin-top: 1em;
+    box-shadow: 0 10px 40px 0 rgba(0, 0, 0, 0.5), 0 0 30px rgba(255, 165, 0, 0.15);
+    transition: all 0.4s ease;
+}
+
+div[data-testid="stMetric"]:hover {
+    transform: translateY(-8px) scale(1.02);
+    box-shadow: 0 15px 50px 0 rgba(0, 0, 0, 0.6), 0 0 40px rgba(255, 165, 0, 0.3);
+    border-color: rgba(255, 165, 0, 0.6);
+}
+
+/* Progress bar styling - Remove white background */
+.stProgress {
+    background-color: transparent !important;
+}
+
+.stProgress > div {
+    background-color: transparent !important;
+}
+
+.stProgress > div > div > div {
+    background-color: #FFA500 !important;
+    background-image: linear-gradient(90deg, #FF8C00, #FFA500, #FFD700) !important;
+    height: 12px !important;
+    border-radius: 10px;
+}
+
+.stProgress > div > div {
+    background-color: rgba(31, 31, 31, 0.5) !important;
+    border-radius: 10px;
+    height: 12px !important;
+}
+
+/* Remove white background from progress text */
+.stProgress [data-testid="stCaptionContainer"] {
+    background-color: transparent !important;
+    color: #FFFFFF !important;
+}
+
+/* Dataframes and tables - Enhanced visibility */
+.stDataFrame {
+    font-size: 1.2rem !important;
+    color: #FFFFFF !important;
+}
+
+.stDataFrame [data-testid="stDataFrameResizable"] {
+    background-color: rgba(31, 31, 31, 0.9) !important;
+    border: 2px solid rgba(255, 165, 0, 0.5) !important;
+    border-radius: 15px;
+    box-shadow: 0 4px 25px rgba(0, 0, 0, 0.4);
+}
+
+.stDataFrame th {
+    color: #FFD700 !important;
+    font-weight: 700 !important;
+    font-size: 1.2rem !important;
+    background-color: rgba(255, 165, 0, 0.2) !important;
+    text-shadow: 0 0 10px rgba(255, 215, 0, 0.5);
+}
+
+.stDataFrame td {
+    color: #FFFFFF !important;
+    font-size: 1.1rem !important;
+}
+
+/* Divider */
+hr {
+    border-color: rgba(255, 165, 0, 0.5) !important;
+    border-width: 2px !important;
+    margin: 2em 0 !important;
+    box-shadow: 0 0 10px rgba(255, 165, 0, 0.3);
+}
+
+
+/* --- Typography --- */
+h1 {
+    font-size: 14rem; /* 2x size (was 7rem) */
+    font-weight: 800;
+    color: #FFFFFF;
+    text-shadow: 0 0 50px rgba(255, 165, 0, 1), 0 0 100px rgba(255, 215, 0, 0.6); /* Enhanced glow */
+    -webkit-text-stroke: 2px rgba(0, 0, 0, 0.6);
+    text-align: center; /* Centered */
+    padding-top: 0.8em; /* Pushed down from top */
+    padding-bottom: 0.5em;
+    letter-spacing: 0.05em;
+
+    /* Gradient Text Color */
+    background: linear-gradient(45deg, #FFA500, #FFD700, #FF8C00);
+    background: -webkit-linear-gradient(45deg, #FFA500, #FFD700, #FF8C00);
+    background-clip: text;
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+}
+
+h2 {
+    font-size: 3rem;
+    color: #FFFFFF !important;
+    font-weight: 700;
+    text-shadow: 0 0 25px rgba(255, 165, 0, 0.8), 0 0 40px rgba(255, 215, 0, 0.4);
+}
+
+/* Container for inputs to push them down */
+div[data-testid="stVerticalBlock"] > [data-testid="stHorizontalBlock"] {
+    margin-top: 2em;
+}
+
+h3 {
+    color: #FFFFFF !important;
+    font-size: 2rem;
+    font-weight: 600;
+    text-shadow: 0 0 20px rgba(255, 165, 0, 0.7);
+}
+
+/* All paragraph and text elements - bright white with glow */
+p, span, div {
+    color: #FFFFFF !important;
+}
+
+/* General text glow effect */
+.stMarkdown, .stText {
+    color: #FFFFFF !important;
+    text-shadow: 0 1px 8px rgba(0, 0, 0, 0.8);
+}
+
+/* Make specific emoji/icons glow */
+.stMarkdown h2:has(📊),
+.stMarkdown h3:has(🏆),
+.stMarkdown h3:has(📊),
+.stMarkdown h3:has(📄) {
+    text-shadow: 0 0 30px rgba(255, 165, 0, 1), 0 0 50px rgba(255, 215, 0, 0.6);
+}
+
+/* Success/Error icons in queries */
+span:contains("✅"),
+span:contains("❌") {
+    font-size: 1.4em;
+    text-shadow: 0 0 15px rgba(255, 215, 0, 0.8);
+}
+
+/* Style for input labels - bright white with glow */
+label[data-testid="stWidgetLabel"] {
+    color: #FFFFFF !important;
+    font-weight: 600 !important;
+    font-size: 1.3rem !important;
+    text-shadow: 0 0 15px rgba(255, 215, 0, 0.5), 0 2px 10px rgba(0, 0, 0, 0.8);
+    background-color: transparent !important;
+}
+
+/* Ensure all markdown containers are transparent */
+[data-testid="stMarkdownContainer"] {
+    background-color: transparent !important;
+}
+
+/* Ensure all widget containers are transparent */
+[data-testid="stWidgetLabel"] {
+    background-color: transparent !important;
+}
+
+/* Form containers */
+[data-testid="stForm"] {
+    background-color: transparent !important;
+}
+
+/* --- Widget Styling --- */
+/* Text Input Container - Remove white background */
+div[data-testid="stTextInput"] {
+    background-color: transparent !important;
+}
+
+div[data-testid="stTextInput"] > div {
+    background-color: transparent !important;
+}
+
+/* Text Input - Larger and more visible (1.25x taller) with properly centered text */
+div[data-testid="stTextInput"] input {
+    background-color: rgba(31, 31, 31, 0.85) !important;
+    border: 2px solid rgba(255, 165, 0, 0.4) !important;
+    color: #FFFFFF !important;
+    border-radius: 15px;
+    padding: 0 1.5em !important; /* Remove vertical padding, let height control it */
+    font-size: 1.3rem !important;
+    font-weight: 500;
+    transition: all 0.3s ease;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+    height: 4.5em !important; /* Fixed height for proper centering */
+    line-height: 4.5em !important; /* Match height for vertical centering */
+    vertical-align: middle !important;
+    text-align: left !important;
+}
+
+div[data-testid="stTextInput"] input:focus {
+    border-color: rgba(255, 165, 0, 0.8) !important;
+    box-shadow: 0 0 25px rgba(255, 165, 0, 0.5);
+    outline: none !important;
+}
+
+div[data-testid="stTextInput"] input::placeholder {
+    color: rgba(255, 255, 255, 0.5) !important;
+    line-height: 4.5em !important;
+}
+
+/* Style autocomplete dropdown */
+div[data-baseweb="popover"],
+ul[role="listbox"],
+div[role="listbox"] {
+    background-color: rgba(31, 31, 31, 0.95) !important;
+    border: 2px solid rgba(255, 165, 0, 0.4) !important;
+    border-radius: 15px !important;
+    backdrop-filter: blur(12px);
+}
+
+li[role="option"],
+div[role="option"] {
+    background-color: rgba(31, 31, 31, 0.95) !important;
+    color: #FFFFFF !important;
+    padding: 1em 1.5em !important;
+    font-size: 1.2rem !important;
+    transition: all 0.2s ease;
+}
+
+li[role="option"]:hover,
+div[role="option"]:hover {
+    background-color: rgba(255, 165, 0, 0.3) !important;
+    color: #FFD700 !important;
+}
+
+/* Button Container - Remove white background */
+.stButton {
+    background-color: transparent !important;
+}
+
+.stButton > div {
+    background-color: transparent !important;
+}
+
+/* Button - Larger and more prominent */
+.stButton>button {
+    background: linear-gradient(90deg, #FF8C00, #FFA500, #FFD700) !important;
+    color: white !important;
+    border-radius: 15px;
+    padding: 1.2em 2em !important;
+    font-weight: 700 !important;
+    font-size: 1.4rem !important;
+    border: none;
+    box-shadow: 0 6px 25px rgba(255, 165, 0, 0.5);
+    transition: all 0.3s ease;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+}
+.stButton>button:hover {
+    transform: scale(1.08) translateY(-3px);
+    box-shadow: 0 10px 35px rgba(255, 165, 0, 0.7);
+}
+.stButton>button:disabled {
+    background: rgba(75, 85, 99, 0.5) !important;
+    color: #9CA3AF !important;
+    box-shadow: none;
+}
+
+/* Custom Slider - Larger and more visible */
+div[data-testid="stSlider"] {
+    padding: 1.5em 0;
+    background-color: transparent !important;
+}
+
+div[data-testid="stSlider"] > div {
+    background-color: transparent !important;
+}
+
+div[data-testid="stSlider"] div[role="slider"] {
+    background-color: #FF8C00;
+    height: 8px !important;
+}
+
+div[data-testid="stSlider"] .thumb {
+    background-color: #FFA500;
+    border: 3px solid white;
+    width: 24px !important;
+    height: 24px !important;
+    box-shadow: 0 4px 15px rgba(255, 165, 0, 0.6);
+}
+
+div[data-testid="stSlider"] [data-testid="stTickBarMin"],
+div[data-testid="stSlider"] [data-testid="stTickBarMax"] {
+    color: #FFFFFF !important;
+    font-size: 1.1rem !important;
+    font-weight: 600;
+}
+
+/* --- Metrics & Results - Larger and more prominent --- */
+div[data-testid="stMetric"] {
+    color: #F9FAFB;
+    padding: 2em !important;
+}
+div[data-testid="stMetric"] > div > div[data-testid="stMetricValue"] {
+    color: #FFD700 !important;
+    font-size: 4.5rem !important;
+    font-weight: 800 !important;
+    text-shadow: 0 0 25px rgba(255, 215, 0, 0.7);
+}
+div[data-testid="stMetric"] > label[data-testid="stMetricLabel"] {
+    color: #FFFFFF !important;
+    font-size: 1.3rem !important;
+    font-weight: 600 !important;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+}
+
+/* Tabs - More visible with glow */
+.stTabs [data-baseweb="tab-list"] {
+    border-bottom: 3px solid rgba(255, 165, 0, 0.5);
+    gap: 1em;
+}
+.stTabs [data-baseweb="tab"] {
+    color: #FFFFFF !important;
+    font-size: 1.4rem !important;
+    font-weight: 700 !important;
+    padding: 1em 2em !important;
+    transition: all 0.3s ease;
+    text-shadow: 0 0 10px rgba(255, 215, 0, 0.3);
+}
+.stTabs [data-baseweb="tab"]:hover {
+    color: #FFD700 !important;
+    background-color: rgba(255, 165, 0, 0.2);
+    text-shadow: 0 0 20px rgba(255, 215, 0, 0.8);
+}
+.stTabs [aria-selected="true"] {
+    color: #FFD700 !important;
+    border-bottom-color: #FFA500 !important;
+    border-bottom-width: 4px !important;
+    background-color: rgba(255, 165, 0, 0.25);
+    text-shadow: 0 0 20px rgba(255, 215, 0, 0.9);
+}
+
+/* Tab content */
+.stTabs [data-baseweb="tab-panel"] {
+    color: #FFFFFF !important;
+    padding-top: 2em;
+}
+
+/* Code blocks for sharing - Enhanced with BLACK background */
+.stCodeBlock {
+    background-color: #000000 !important;
+    border: 2px solid rgba(255, 165, 0, 0.8) !important;
+    border-radius: 15px;
+    padding: 1.5em !important;
+    box-shadow: 0 4px 25px rgba(0, 0, 0, 0.6), 0 0 25px rgba(255, 165, 0, 0.3);
+}
+
+.stCodeBlock code {
+    color: #FFD700 !important;
+    font-size: 1.2rem !important;
+    font-weight: 600 !important;
+    text-shadow: 0 0 15px rgba(255, 215, 0, 0.7);
+    background-color: #000000 !important;
+}
+
+.stCodeBlock pre {
+    background-color: #000000 !important;
+    color: #FFD700 !important;
+}
+
+/* All code/pre elements */
+code, pre {
+    color: #FFD700 !important;
+    text-shadow: 0 0 8px rgba(255, 215, 0, 0.4);
+    background-color: #000000 !important;
+}
+
+/* Expanders - Make queries pop */
+.streamlit-expanderHeader {
+    background-color: rgba(31, 31, 31, 0.85) !important;
+    border: 2px solid rgba(255, 165, 0, 0.5) !important;
+    border-radius: 12px;
+    font-size: 1.3rem !important;
+    font-weight: 700 !important;
+    color: #FFFFFF !important;
+    text-shadow: 0 0 15px rgba(255, 215, 0, 0.6);
+    padding: 1em !important;
+    transition: all 0.3s ease;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+}
+
+.streamlit-expanderHeader:hover {
+    border-color: rgba(255, 165, 0, 0.9) !important;
+    background-color: rgba(31, 31, 31, 0.95) !important;
+    box-shadow: 0 6px 30px rgba(255, 165, 0, 0.4);
+    transform: translateY(-2px);
+}
+
+/* Expander content - FORCE BLACK BACKGROUND */
+.streamlit-expanderContent {
+    background-color: #000000 !important;
+    border: 2px solid rgba(255, 165, 0, 0.4) !important;
+    border-radius: 0 0 12px 12px;
+    padding: 1.5em !important;
+    color: #FFFFFF !important;
+}
+
+.streamlit-expanderContent * {
+    background-color: transparent !important;
+}
+
+.streamlit-expanderContent div,
+.streamlit-expanderContent section {
+    background-color: transparent !important;
+}
+
+/* JSON viewer inside expanders - FORCE DARK */
+.streamlit-expanderContent pre,
+.streamlit-expanderContent code {
+    color: #FFD700 !important;
+    background-color: #000000 !important;
+    border: 1px solid rgba(255, 165, 0, 0.4) !important;
+    border-radius: 8px;
+    padding: 1em !important;
+}
+
+.streamlit-expanderContent [data-testid="stJson"] {
+    background-color: #000000 !important;
+}
+
+/* Force all text in expanders to be visible */
+.streamlit-expanderContent p,
+.streamlit-expanderContent span,
+.streamlit-expanderContent div {
+    color: #FFFFFF !important;
+}
+
+/* JSON object viewer styling - FORCE BLACK BACKGROUND */
+[data-testid="stJson"] {
+    background-color: #000000 !important;
+    border: 2px solid rgba(255, 165, 0, 0.6) !important;
+    border-radius: 12px;
+    padding: 1.5em !important;
+    box-shadow: 0 4px 25px rgba(0, 0, 0, 0.6), 0 0 20px rgba(255, 165, 0, 0.3);
+}
+
+[data-testid="stJson"] * {
+    background-color: transparent !important;
+}
+
+[data-testid="stJson"] div,
+[data-testid="stJson"] section {
+    background-color: transparent !important;
+}
+
+[data-testid="stJson"] pre {
+    color: #FFFFFF !important;
+    font-size: 1.1rem !important;
+    line-height: 1.6;
+    background-color: transparent !important;
+}
+
+/* JSON keys */
+[data-testid="stJson"] .json-key {
+    color: #FFD700 !important;
+    font-weight: 600;
+    text-shadow: 0 0 8px rgba(255, 215, 0, 0.4);
+}
+
+/* JSON values */
+[data-testid="stJson"] .json-value {
+    color: #FFFFFF !important;
+}
+
+/* JSON strings */
+[data-testid="stJson"] .json-string {
+    color: #FFA500 !important;
+}
+
+/* Streamlit JSON component - override default white */
+.stJson,
+div[class*="json"],
+.element-container:has([data-testid="stJson"]) {
+    background-color: #000000 !important;
+}
+
+.element-container:has([data-testid="stJson"]) > div {
+    background-color: transparent !important;
+}
+
+/* --- Animations --- */
+.stAlert {
+    animation: fadeIn 0.5s ease;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+/* Custom Loading Animation */
+.loader-container {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 3em;
+    margin: 2em 0;
+}
+
+.pulsing-orb {
+    width: 100px;
+    height: 100px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, #FF8C00, #FFA500, #FFD700);
+    box-shadow: 0 0 50px rgba(255, 165, 0, 0.8),
+                0 0 100px rgba(255, 215, 0, 0.5),
+                inset 0 0 30px rgba(255, 255, 255, 0.3);
+    animation: pulse 2s ease-in-out infinite;
+}
+
+@keyframes pulse {
+    0%, 100% {
+        transform: scale(1);
+        box-shadow: 0 0 50px rgba(255, 165, 0, 0.8),
+                    0 0 100px rgba(255, 215, 0, 0.5),
+                    inset 0 0 30px rgba(255, 255, 255, 0.3);
+    }
+    50% {
+        transform: scale(1.15);
+        box-shadow: 0 0 80px rgba(255, 165, 0, 1),
+                    0 0 150px rgba(255, 215, 0, 0.7),
+                    inset 0 0 50px rgba(255, 255, 255, 0.5);
+    }
+}
+
+.loading-text {
+    color: #FFD700 !important;
+    font-size: 2rem !important;
+    font-weight: 700 !important;
+    margin-top: 2em;
+    text-shadow: 0 0 20px rgba(255, 215, 0, 0.7);
+    animation: textGlow 2s ease-in-out infinite;
+}
+
+@keyframes textGlow {
+    0%, 100% {
+        text-shadow: 0 0 20px rgba(255, 215, 0, 0.7);
+    }
+    50% {
+        text-shadow: 0 0 35px rgba(255, 215, 0, 1);
+    }
+}
